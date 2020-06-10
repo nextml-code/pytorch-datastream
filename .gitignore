@@ -1,0 +1,12 @@
+venv
+__pycache__
+.pytest_cache
+*.egg-info
+.vscode
+dist
+.eggs/
+build/
+*.pyc
+
+AUTHORS
+ChangeLog
