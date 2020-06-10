@@ -66,14 +66,13 @@
         )
     )
 
-### Datastream to pytorch data loader
+### Datastream to pytorch data loader for evaluation
 
-    data_loader = (
-        Datastream(dataset)
+    evaluate_data_loader = (
+        Datastream(dataset, torch.utils.data.SequentialSampler())
         .data_loader(
             batch_size=32,
             num_workers=8,
-            n_batches_per_epoch=100,
         )
     )
 

@@ -186,6 +186,33 @@ class Dataset(torch.utils.data.Dataset):
         )
 
 
+def test_subscript():
+    number_list = [4, 7, 12]
+    number_df = pd.DataFrame(dict(number=number_list))
+
+    for dataset in (
+        Dataset.from_subscriptable(number_list),
+        Dataset.from_dataframe(number_df).map(lambda row: row['number'])
+    ):
+
+        if dataset[-1] != number_list[-1]:
+            raise AssertionError('Unexpected result from dataset subscript')
+
+        mapped_dataset = dataset.map(lambda number: number * 2)
+
+        if mapped_dataset[-1] != number_list[-1] * 2:
+            raise AssertionError(
+                'Unexpected result from dataset subscript after map'
+            )
+
+
+def test_subset():
+    dataset = Dataset.from_subscriptable([4, 7, 12]).subset([1, 2])
+
+    if dataset[0] != 7:
+        raise AssertionError('Unexpected result from subset dataset')
+
+
 def test_concat_dataset():
     dataset = Dataset.concat([
         Dataset.from_subscriptable(list(range(5))),

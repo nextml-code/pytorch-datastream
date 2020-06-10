@@ -372,13 +372,6 @@ class Datastream:
             MultiSampler.from_number(n, self.dataset),
         )
 
-
-    @staticmethod
-    def shared_dataset(datastreams):
-        # same as multi sample? possibly allow different pipelines?
-        pass
-
-
     def map(self, fn):
         return Datastream(
             self.dataset.map(fn),
