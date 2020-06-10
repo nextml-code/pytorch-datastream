@@ -6,11 +6,32 @@
 
 ## Usage
 
-### Simple pipeline
+### Dataset from subscriptable
+
+    from datastream import Dataset
+
+    fruits_and_cost = (
+        ('apple', 5),
+        ('pear', 7),
+        ('banana', 14),
+        ('kiwi', 100),
+    )
+
+    dataset = (
+        Dataset.from_subscriptable(fruits_and_cost)
+        .map(lambda fruit, cost: (
+            fruit,
+            cost * 2,
+        ))
+    )
+
+    print(dataset[2]) # ('banana', 28)
+
+### Dataset from pandas dataframe
 
     from PIL import Image
     from imgaug import augmenters as iaa
-    from datastream import Dataset, Datastream
+    from datastream import Dataset
 
     augmenter = iaa.Sequential([...])
 
@@ -34,10 +55,25 @@
         .map(preprocess)
     )
 
+### Datastream to pytorch data loader
+
     data_loader = (
         Datastream(dataset)
         .data_loader(
-            ...
+            batch_size=32,
+            num_workers=8,
+            n_batches_per_epoch=100,
+        )
+    )
+
+### Datastream to pytorch data loader
+
+    data_loader = (
+        Datastream(dataset)
+        .data_loader(
+            batch_size=32,
+            num_workers=8,
+            n_batches_per_epoch=100,
         )
     )
 
