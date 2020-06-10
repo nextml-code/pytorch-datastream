@@ -39,7 +39,7 @@ class Dataset(torch.utils.data.Dataset):
     def __str__(self):
         return str('\n'.join(
             [str(self[index]) for index in range(min(3, len(self)))]
-            + ['...'] if len(self) > 3 else []
+            + (['...'] if len(self) > 3 else [])
         ))
 
     def __repr__(self):
