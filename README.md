@@ -1,10 +1,38 @@
 # Pytorch Datastream
 
+The main components of this library are:
+- Datastream
+- Dataset
+
+A `Dataset` is a mapping that allows pipelining of functions in a readable syntax and `Datastream` combines a dataset and a sampler into a stream of examples.        
+
 ## Install
 
     pip install pytorch-datastream
 
 ## Usage
+
+The list below is meant to showcase functions that are useful in most standard and non-standard cases. It is not meant to be an exhaustive list.
+
+    Dataset.from_subscriptable
+    Dataset.from_dataframe
+    Dataset
+        .map
+        .subset
+
+    Datastream.merge
+    Datastream.zip
+    Datastream
+        .map
+        .data_loader
+        .zip_index
+        .update_weights_
+        .update_example_weight_
+        .weight
+        .state_dict
+        .load_state_dict
+        .multi_sample
+        .sample_proportion
 
 ### Dataset from subscriptable
 
