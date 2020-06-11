@@ -1,3 +1,5 @@
+from pydantic import BaseModel
+from typing import Tuple, Callable, Any, Optional, Iterable
 from functools import partial
 from itertools import repeat, chain, islice
 from collections import namedtuple
@@ -182,14 +184,26 @@ class ZipSampler(torch.utils.data.Sampler):
 
 
 # TODO: write custom sampler that avoid replacement between samplers
-class MultiSampler(torch.utils.data.Sampler):
+class MultiSampler(BaseModel, torch.utils.data.Sampler):
+    dataset: Dataset
+    samplers: Tuple[torch.utils.data.Sampler, ...]
+    length: int
+    merged_samplers: Iterable
+
+    class Config:
+        arbitrary_types_allowed = True
+        allow_mutation = False
+
     def __init__(self, samplers, dataset):
-        self.samplers = samplers
-        self.dataset = dataset
-        self.length = len(dataset)
-        self.merged_samplers = MultiSampler.merge_samplers(
-            samplers,
-            [1 for _ in samplers],
+        BaseModel.__init__(
+            self,
+            samplers=samplers,
+            dataset=dataset,
+            length=len(dataset) * len(samplers),
+            merged_samplers=MultiSampler.merge_samplers(
+                samplers,
+                [1 for _ in samplers],
+            )
         )
 
     @staticmethod
@@ -203,7 +217,9 @@ class MultiSampler(torch.utils.data.Sampler):
         return self.length
 
     def __iter__(self):
-        return iter(self.merged_samplers)
+        it = self.merged_samplers
+        for _ in range(self.length):
+            yield next(it)
 
     @staticmethod
     def merge_samplers(samplers, ns):
@@ -251,17 +267,27 @@ class MultiSampler(torch.utils.data.Sampler):
 
 
 
-class RepeatSampler(torch.utils.data.Sampler):
+class RepeatSampler(BaseModel, torch.utils.data.Sampler):
+    sampler: torch.utils.data.Sampler
+    length: int
+    epoch_bound: bool = False
+    queue: Iterable
+
+    class Config:
+        arbitrary_types_allowed = True
+
     def __init__(self, sampler, length, epoch_bound=False):
         '''
         Wrapper that repeats and limits length of sampling based on
         epoch length and batch size
         '''
-        super().__init__(range(length))
-        self.sampler = sampler
-        self.length = length
-        self.epoch_bound = epoch_bound
-        self.queue = iter(self.sampler)
+        BaseModel.__init__(
+            self,
+            sampler=sampler,
+            length=length,
+            epoch_bound=epoch_bound,
+            queue=iter(sampler)
+        )
 
     def __iter__(self):
         if self.epoch_bound:
@@ -300,14 +326,23 @@ class RepeatSampler(torch.utils.data.Sampler):
         return self.sampler.load_state_dict(state_dict)
 
 
-class Datastream:
-    def __init__(self, dataset, sampler=None):
-        super().__init__()
-        self.dataset = dataset
+class Datastream(BaseModel):
+    dataset: Dataset
+    sampler: Optional[torch.utils.data.Sampler]
 
-        if sampler is None:
-            sampler = StandardSampler(len(self.dataset))
-        self.sampler = sampler
+    class Config:
+        arbitrary_types_allowed = True
+        allow_mutation = False
+
+    def __init__(self, dataset, sampler=None):
+        super().__init__(
+            dataset=dataset,
+            sampler=(
+                StandardSampler(len(dataset))
+                if sampler is None
+                else sampler
+            )
+        )
 
     def data_loader(self, n_batches_per_epoch=None, **kwargs):
         if n_batches_per_epoch is None:
@@ -516,3 +551,40 @@ def test_merge_datastream_weights():
     samples = list(datastream.data_loader(batch_size=4, n_batches_per_epoch=4))
 
     datastream.update_weights_(lambda weights: weights * 0.9 + 1 * 0.1)
+
+
+def test_multi_sample():
+
+    data = [1, 2, 4]
+    n_multi_sample = 2
+
+    datastream = (
+        Datastream(
+            Dataset.from_subscriptable(data)
+        )
+        .map(lambda number: number ** 2)
+        .multi_sample(n_multi_sample)
+        .sample_proportion(0.5)
+        .zip_index()
+        .map(lambda number, index: (number ** 0.5, index))
+    )
+
+    output = [
+        (number, index)
+        for number, index in datastream.data_loader(batch_size=1)
+    ]
+    assert len(output) == len(data) * n_multi_sample
+    print(output)
+
+    for index, number in zip(output, range(2)):
+        datastream.update_example_weight_(index, 0)
+
+    output2 = [
+        (number, index)
+        for number, index in datastream.data_loader(batch_size=1)
+    ]
+    assert len(output2) == len(data) * n_multi_sample
+
+    zero_indices = set([index for _, index in output[:2]])
+    for number, index in output2:
+        assert index not in zero_indices
