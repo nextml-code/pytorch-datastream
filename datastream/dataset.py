@@ -1,3 +1,5 @@
+from pydantic import BaseModel
+from typing import Tuple, Callable, Any
 from functools import partial
 from itertools import repeat, chain
 import numpy as np
@@ -6,28 +8,47 @@ import torch
 from datastream import starcompose, star
 
 
-class Dataset(torch.utils.data.Dataset):
-    def __init__(self, source, length, function_list):
-        super().__init__()
-        self.source = source
-        self.length = length
-        self.function_list = function_list
-        self.composed_fn = starcompose(*function_list)
+class Dataset(BaseModel, torch.utils.data.Dataset):
+    source: pd.DataFrame
+    length: int
+    functions: Tuple[Callable[..., Any], ...]
+    composed_fn: Callable[..., Any]
+
+    class Config:
+        arbitrary_types_allowed = True
+        allow_mutation = False
+
+    def __init__(
+        self,
+        source: pd.DataFrame,
+        length: int,
+        functions: Tuple[Callable[..., Any], ...],
+    ):
+        BaseModel.__init__(
+            self,
+            source=source,
+            length=length,
+            functions=functions,
+            composed_fn=starcompose(*functions),
+        )
 
     @staticmethod
     def from_subscriptable(subscriptable):
-        return Dataset(
-            subscriptable,
-            len(subscriptable),
-            [lambda ds, index: ds[index]],
+        return (
+            Dataset.from_dataframe(
+                pd.DataFrame(dict(
+                    example=subscriptable
+                ))
+            )
+            .map(lambda row: row['example'])
         )
 
     @staticmethod
     def from_dataframe(dataframe):
         return Dataset(
-            dataframe,
-            len(dataframe),
-            [lambda df, index: df.iloc[index]],
+            source=dataframe,
+            length=len(dataframe),
+            functions=tuple([lambda df, index: df.iloc[index]]),
         )
 
     def __getitem__(self, index):
@@ -50,40 +71,31 @@ class Dataset(torch.utils.data.Dataset):
 
     def map(self, function):
         return Dataset(
-            self.source,
-            self.length,
-            self.function_list + [function],
+            source=self.source,
+            length=self.length,
+            functions=self.functions + tuple([function]),
         )
 
     def zip_index(self):
         composed_fn = self.composed_fn
         return Dataset(
-            self.source,
-            self.length,
-            [lambda source, index: (
+            source=self.source,
+            length=self.length,
+            functions=tuple([lambda source, index: (
                 composed_fn(source, index),
                 index,
-            )],
+            )]),
         )
 
     def subset(self, indices):
         if type(indices) is pd.Series:
             indices = np.argwhere(indices.values).squeeze(1)
 
-        if type(self.source) is pd.DataFrame:
-            return Dataset(
-                self.source.iloc[indices],
-                len(indices),
-                self.function_list,
-            )
-        else:
-            return Dataset(
-                indices,
-                len(indices),
-                [lambda indices, outer_index: (
-                    self.source, indices[outer_index]
-                )] + self.function_list,
-            )
+        return Dataset(
+            source=self.source.iloc[indices],
+            length=len(indices),
+            functions=self.functions,
+        )
 
     @staticmethod
     def create_from_concat_mapping(datasets):
@@ -117,17 +129,17 @@ class Dataset(torch.utils.data.Dataset):
         from_concat_mapping = Dataset.create_from_concat_mapping(datasets)
 
         return Dataset(
-            datasets,
-            sum(map(len, datasets)),
-            [
+            source=pd.DataFrame(dict(dataset=datasets)),
+            length=sum(map(len, datasets)),
+            functions=(
                 lambda datasets, index: (
                     datasets,
                     *from_concat_mapping(index),
                 ),
                 lambda datasets, dataset_index, inner_index: (
-                    datasets[dataset_index][inner_index]
+                    datasets.iloc[dataset_index]['dataset'][inner_index]
                 ),
-            ],
+            ),
         )
 
     @staticmethod
@@ -162,27 +174,27 @@ class Dataset(torch.utils.data.Dataset):
         from_combine_mapping = Dataset.create_from_combine_mapping(datasets)
 
         return Dataset(
-            datasets,
-            np.prod(list(map(len, datasets))),
-            [
+            source=pd.DataFrame(dict(dataset=datasets)),
+            length=np.prod(list(map(len, datasets))),
+            functions=(
                 lambda datasets, index: (
-                    datasets,
+                    datasets['dataset'],
                     from_combine_mapping(index),
                 ),
                 lambda datasets, indices: tuple([
                     dataset[index] for dataset, index in zip(datasets, indices)
                 ]),
-            ]
+            )
         )
 
     @staticmethod
     def zip(datasets):
         return Dataset(
-            datasets,
-            min(map(len, datasets)),
-            [lambda datasets, index: tuple(
-                dataset[index] for dataset in datasets
-            )],
+            source=pd.DataFrame(dict(dataset=datasets)),
+            length=min(map(len, datasets)),
+            functions=tuple([lambda datasets, index: tuple(
+                dataset[index] for dataset in datasets['dataset']
+            )]),
         )
 
 

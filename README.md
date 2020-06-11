@@ -4,7 +4,7 @@ The main components of this library are:
 - Datastream
 - Dataset
 
-A `Dataset` is a mapping that allows pipelining of functions in a readable syntax and `Datastream` combines a dataset and a sampler into a stream of examples.        
+A `Dataset` is a mapping that allows pipelining of functions in a readable syntax and `Datastream` combines a `Dataset` and a sampler into a stream of examples.        
 
 ## Install
 
