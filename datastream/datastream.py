@@ -9,25 +9,48 @@ import torch
 from datastream import starcompose, star, repeat_map_chain, Dataset
 
 
-class StandardSampler(torch.utils.data.WeightedRandomSampler):
+class StandardSampler(BaseModel, torch.utils.data.Sampler):
+    proportion: float
+    replacement: bool
+    sampler: torch.utils.data.WeightedRandomSampler
+
+    class Config:
+        arbitrary_types_allowed = True
+        allow_mutation = False
+
     def __init__(self, length, proportion=1.0, replacement=False):
-        super().__init__(
-            torch.ones(length).double(),
-            num_samples=int(length * proportion),
+        BaseModel.__init__(
+            self,
+            proportion=proportion,
             replacement=replacement,
+            sampler=torch.utils.data.WeightedRandomSampler(
+                torch.ones(length).double(),
+                num_samples=int(length * proportion),
+                replacement=replacement,
+            )
         )
 
+    def __len__(self):
+        return len(self.sampler)
+
+    def __iter__(self):
+        return iter(self.sampler)
+
+    @property
+    def weights(self):
+        return self.sampler.weights
+
     def weight(self, index):
-        return self.weights[index].item()
+        return self.sampler.weights[index].item()
 
     def update_weights_(self, function):
-        self.weights[:] = function(self.weights)
+        self.sampler.weights[:] = function(self.sampler.weights)
         
     def update_example_weight_(self, weight, index):
         if hasattr(weight, 'item'):
             weight = weight.item()
 
-        self.weights[index] = weight
+        self.sampler.weights[index] = weight
 
     def sample_proportion(self, proportion):
         sampler = StandardSampler(
@@ -35,26 +58,40 @@ class StandardSampler(torch.utils.data.WeightedRandomSampler):
             proportion,
             self.replacement,
         )
-        sampler.weights = self.weights
+        sampler.sampler.weights = self.sampler.weights
         return sampler
 
     def state_dict(self):
-        return dict(weights=self.weights)
+        return dict(weights=self.sampler.weights)
 
     def load_state_dict(self, state_dict):
-        self.weights[:] = state_dict['weights']
+        self.sampler.weights[:] = state_dict['weights']
 
 
-class MergeSampler(torch.utils.data.Sampler):
+class MergeSampler(BaseModel, torch.utils.data.Sampler):
+    samplers: Tuple[torch.utils.data.Sampler, ...]
+    datasets: Tuple[Dataset, ...]
+    ns: Tuple[int, ...]
+    length: int
+    from_mapping: Callable[[int], Tuple[int, int]]
+    merged_samplers: Iterable
+
+    class Config:
+        arbitrary_types_allowed = True
+        allow_mutation = False
+
     def __init__(self, samplers, datasets, ns):
-        self.samplers = samplers
-        self.datasets = datasets
-        self.ns = ns
-        self.from_mapping = Dataset.create_from_concat_mapping(datasets)
-        self.merged_samplers = MergeSampler.merge_samplers(
-            samplers, datasets, ns
+        BaseModel.__init__(
+            self,
+            samplers=samplers,
+            datasets=datasets,
+            ns=ns,
+            length=MergeSampler.merged_samplers_length(samplers),
+            from_mapping=Dataset.create_from_concat_mapping(datasets),
+            merged_samplers=MergeSampler.merge_samplers(
+                samplers, datasets, ns
+            ),
         )
-        self.length = MergeSampler.merged_samplers_length(samplers)
 
     def __len__(self):
         return self.length
@@ -121,13 +158,26 @@ class MergeSampler(torch.utils.data.Sampler):
             sampler.load_state_dict(state_dict)
 
 
-class ZipSampler(torch.utils.data.Sampler):
+class ZipSampler(BaseModel, torch.utils.data.Sampler):
+    samplers: Tuple[torch.utils.data.Sampler, ...]
+    datasets: Tuple[Dataset, ...]
+    length: int
+    from_mapping: Callable[[int], Tuple[int, ...]]
+    zipped_samplers: Iterable
+
+    class Config:
+        arbitrary_types_allowed = True
+        allow_mutation = False
+
     def __init__(self, samplers, datasets):
-        self.samplers = samplers
-        self.datasets = datasets
-        self.from_mapping = Dataset.create_from_combine_mapping(datasets)
-        self.zipped_samplers = ZipSampler.zip_samplers(samplers, datasets)
-        self.length = max(map(len, samplers))
+        BaseModel.__init__(
+            self,
+            samplers=samplers,
+            datasets=datasets,
+            length=max(map(len, samplers)),
+            from_mapping=Dataset.create_from_combine_mapping(datasets),
+            zipped_samplers=ZipSampler.zip_samplers(samplers, datasets),
+        )
 
     def __len__(self):
         return self.length
@@ -185,8 +235,8 @@ class ZipSampler(torch.utils.data.Sampler):
 
 # TODO: write custom sampler that avoid replacement between samplers
 class MultiSampler(BaseModel, torch.utils.data.Sampler):
-    dataset: Dataset
     samplers: Tuple[torch.utils.data.Sampler, ...]
+    dataset: Dataset
     length: int
     merged_samplers: Iterable
 
