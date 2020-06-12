@@ -1,10 +1,16 @@
 # Pytorch Datastream
 
-The main components of this library are:
-- Datastream
-- Dataset
+This is a simple library for creating very readable dataset pipelines and
+reusing best practices for issues such as imbalanced datasets. There are
+just two components to keep track of: ``Dataset`` and ``Datastream``.
 
-A `Dataset` is a mapping that allows pipelining of functions in a readable syntax and `Datastream` combines a `Dataset` and a sampler into a stream of examples.        
+``Dataset`` is a simple mapping between an index and an example. It provides 
+pipelining of functions in a very readable syntax originally adapted from
+tensorflow 2's ``tf.data.Dataset``.
+
+``Datastream`` combines a ``Dataset`` and a sampler into a stream of examples.
+It provides a simple solution to oversampling / stratification, weighted
+sampling, and finally converting to a ``torch.utils.data.DataLoader``.
 
 ## Install
 
@@ -12,7 +18,8 @@ A `Dataset` is a mapping that allows pipelining of functions in a readable synta
 
 ## Usage
 
-The list below is meant to showcase functions that are useful in most standard and non-standard cases. It is not meant to be an exhaustive list.
+The list below is meant to showcase functions that are useful in most standard
+and non-standard cases. It is not meant to be an exhaustive list.
 
     Dataset.from_subscriptable
     Dataset.from_dataframe
@@ -94,61 +101,7 @@ The list below is meant to showcase functions that are useful in most standard a
         )
     )
 
-### Datastream to pytorch data loader for evaluation
+### More usage examples
 
-    evaluate_data_loader = (
-        Datastream(dataset, torch.utils.data.SequentialSampler())
-        .data_loader(
-            batch_size=32,
-            num_workers=8,
-        )
-    )
-
-### Merge / stratified / oversampled datastreams
-
-    datastream = Datastream.merge([
-        (datastream1, 2),
-        (datastream2, 1),
-        (datastream3, 1),
-    ])
-
-### Weighted datastreams
-
-    datastream = (
-        Datastream(dataset)
-        .zip_index()
-    )
-
-    data_loader = datastream.data_loader(...)
-
-    for indices, batch in data_loader:
-        ...
-
-        for index in indices:
-            datastream.update_weight(index, example_loss.exp())
-
-### Unsupervised weighted datastreams
-
-    datastream = (
-        Datastream(dataset)
-        .zip_index()
-        .multi_sample(N_CLASSES)
-        .sample_proportion(0.01)
-    )
-
-    data_loader = datastream.data_loader(...)
-
-    for indices, batch in data_loader:
-        ...
-
-        for index in indices:
-            datastream.update_weight(index, predicted_classes)
-
-### Decaying datastream weights
-
-    DECAY_FACTOR = 0.999
-
-    datastream.update_weights(lambda weights: (
-        weights * DECAY_FACTOR
-        + weights.mean() * (1 - DECAY_FACTOR)
-    ))
+See the documentation for examples with oversampling / stratification and
+weighted sampling.
