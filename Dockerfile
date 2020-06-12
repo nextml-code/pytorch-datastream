@@ -13,6 +13,7 @@ RUN virtualenv venv \
     && source venv/bin/activate \
     && pip install --requirement requirements.txt
 
+COPY .git/ ./.git/
 COPY setup.* ./
 COPY pytest.ini ./
 COPY README.rst ./
