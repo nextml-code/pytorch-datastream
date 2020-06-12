@@ -1,5 +1,6 @@
+from __future__ import annotations
 from pydantic import BaseModel
-from typing import Tuple, Callable, Any, Optional, Iterable
+from typing import Tuple, Dict, Callable, Any, Optional, Iterable
 from functools import partial
 from itertools import repeat, chain, islice
 from collections import namedtuple
@@ -377,6 +378,21 @@ class RepeatSampler(BaseModel, torch.utils.data.Sampler):
 
 
 class Datastream(BaseModel):
+    '''
+    ``Datastream`` combines a ``Dataset`` and a sampler into a stream of
+    examples.
+
+        >>> from datastream import Dataset, Datastream
+        >>> data_loader = (
+        ...     Datastream(
+        ...         Dataset.from_subscriptable([1, 2, 3])
+        ...     )
+        ...     .data_loader(batch_size=16, n_batches_per_epoch=100)
+        ... )
+        >>> len(next(iter(data_loader)))
+        16
+    '''
+
     dataset: Dataset
     sampler: Optional[torch.utils.data.Sampler]
 
@@ -384,7 +400,11 @@ class Datastream(BaseModel):
         arbitrary_types_allowed = True
         allow_mutation = False
 
-    def __init__(self, dataset, sampler=None):
+    def __init__(
+        self,
+        dataset: Dataset,
+        sampler: torch.utils.data.Sampler = None
+    ):
         super().__init__(
             dataset=dataset,
             sampler=(
@@ -394,36 +414,24 @@ class Datastream(BaseModel):
             )
         )
 
-    def data_loader(self, n_batches_per_epoch=None, **kwargs):
-        if n_batches_per_epoch is None:
-            sampler = self.sampler
-        else:
-            sampler = RepeatSampler(
-                self.sampler,
-                n_batches_per_epoch * kwargs['batch_size'],
-            )
-
-        return torch.utils.data.DataLoader(
-            self.dataset, sampler=sampler, **kwargs
-        )
-
-    def weight(self, index):
-        return self.sampler.weight(index)
-
-    def update_weights_(self, function):
-        self.sampler.update_weights_(function)
-
-    def update_example_weight_(self, weights, index):
-        self.sampler.update_example_weight_(weights, index)
-
-    def sample_proportion(self, proportion):
-        return Datastream(
-            self.dataset,
-            self.sampler.sample_proportion(proportion),
-        )
-
     @staticmethod
-    def merge(datastreams_and_ns):
+    def merge(datastreams_and_ns: Tuple[Union[
+        Datastream,
+        Tuple[Datastream, int]
+    ], ...]):
+        '''
+        Merge multiple datastreams by interleaving them. Optionally you can
+        define different lengths per ``Datastream``.
+
+        .. highlight:: python
+        .. code-block:: python
+
+            Datastream.merge([
+                (datastream1, 2),
+                (datastream2, 1),
+                (datastream3, 1),
+            ])
+        '''
         datastreams_and_ns = [
             x if type(x) is tuple else (x, 1)
             for x in datastreams_and_ns
@@ -440,7 +448,12 @@ class Datastream(BaseModel):
         )
 
     @staticmethod
-    def zip(datastreams):
+    def zip(datastreams: List[Datastream]) -> Datastream:
+        '''
+        Zip multiple datastreams together so that all combinations of examples
+        are possible creating tuples like ``(example1, example2, ...)``.
+        The samples are drawn independently from each underlying datastream.
+        '''
         return Datastream(
             Dataset.combine([
                 datastream.dataset for datastream in datastreams
@@ -451,29 +464,111 @@ class Datastream(BaseModel):
             ])),
         )
 
-    def multi_sample(self, n):
-        return Datastream(
-            self.dataset,
-            MultiSampler.from_number(n, self.dataset),
-        )
-
-    def map(self, fn):
+    def map(self, fn: Callable) -> Datastream:
+        '''Append a function to the underlying dataset pipeline.'''
         return Datastream(
             self.dataset.map(fn),
             self.sampler,
         )
 
-    def zip_index(self):
+    def data_loader(
+        self,
+        n_batches_per_epoch: int = None,
+        **kwargs
+    ) -> torch.utils.data.DataLoader:
+        '''Get ``torch.utils.data.DataLoader`` for use in pytorch pipeline.'''
+        if n_batches_per_epoch is None:
+            sampler = self.sampler
+        else:
+            sampler = RepeatSampler(
+                self.sampler,
+                n_batches_per_epoch * kwargs['batch_size'],
+            )
+
+        return torch.utils.data.DataLoader(
+            self.dataset, sampler=sampler, **kwargs
+        )
+
+    def zip_index(self) -> Datastream:
+        '''
+        Zip the output with its underlying `Dataset` index. The output of the
+        pipeline will be a tuple ``(output, index)``
+
+        This method is used when you want modify your sample weights during
+        training.
+        '''
         return Datastream(
             self.dataset.zip_index(),
             self.sampler,
         )
 
-    def state_dict(self):
+    def weight(self, index: int) -> float:
+        '''Get sample weight for specific example.'''
+        return self.sampler.weight(index)
+
+    def update_weights_(self, function: Callable[[np.array], np.array]):
+        '''Update all sample weights by function **in-place**.'''
+        self.sampler.update_weights_(function)
+
+    def update_example_weight_(self, weight: Union[List, float], index: int):
+        '''Update sample weight for specific example **in-place**.'''
+        self.sampler.update_example_weight_(weight, index)
+
+    def sample_proportion(self, proportion: float) -> Datastream:
+        '''
+        Create new ``Datastream`` with different proportion before restarting
+        sampling with new weights and allowing sample replacement.
+
+        It is important to set this if you are using sample weights because the
+        default is to sample without replacement with proportion 1.0 which will
+        cause the weighting scheme to only affect the order in which the
+        samples are drawn.
+        '''
+        return Datastream(
+            self.dataset,
+            self.sampler.sample_proportion(proportion),
+        )
+
+    def state_dict(self) -> Dict:
+        '''Get state of datastream. Useful for checkpointing.'''
         return dict(sampler=self.sampler.state_dict())
 
-    def load_state_dict(self, state_dict):
+    def load_state_dict(self, state_dict: Dict):
+        '''Load saved state of datastream.'''
         return self.sampler.load_state_dict(state_dict['sampler'])
+
+    def multi_sample(self, n: int) -> Datastream:
+        '''
+        Split datastream into clones with different sample weights and then
+        merge them. The weights when accessed will be a sequence of multiple
+        weights.
+
+        This allows sample strategies where you for example stratify based on
+        the model's predictions as shown below.
+
+        .. highlight:: python
+        .. code-block:: python
+
+            datastream = (
+                Datastream(dataset)
+                .zip_index()
+                .multi_sample(n_classes)
+                .sample_proportion(0.01)
+            )
+
+            data_loader = datastream.data_loader(...)
+
+            for indices, batch in data_loader:
+                ...
+
+                for index in indices:
+                    datastream.update_weight(index, predicted_classes)
+
+        '''
+        return Datastream(
+            self.dataset,
+            MultiSampler.from_number(n, self.dataset),
+        )
 
 
 def test_datastream_merge():
@@ -625,6 +720,9 @@ def test_multi_sample():
     ]
     assert len(output) == len(data) * n_multi_sample
     print(output)
+
+    state = datastream.state_dict()
+    datastream.load_state_dict(state)
 
     for index, number in zip(output, range(2)):
         datastream.update_example_weight_(index, 0)
