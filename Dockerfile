@@ -2,17 +2,25 @@ FROM python:3.8
 
 WORKDIR /usr/src/pytorch-datastream
 
-COPY pytest.ini ./
-COPY requirements.txt ./
-COPY scripts/ ./scripts/
-COPY setup.* ./
+SHELL [ "/bin/bash", "-c" ]
 
-ENV TERM vt100
+RUN pip install virtualenv==20.0.16
 RUN virtualenv venv -p python3.8
-RUN echo "source venv/bin/activate" >> ${HOME}/.bashrc
 
+COPY requirements.txt ./
+
+RUN virtualenv venv \
+    && source venv/bin/activate \
+    && pip install --requirement requirements.txt
+
+COPY setup.* ./
+COPY pytest.ini ./
+COPY README.rst ./
+COPY LICENSE ./
 COPY datastream/ ./datastream
-COPY .git/ ./.git/
-RUN bash -c 'source venv/bin/activate && pip install . && python -c "import datastream"'
+
+RUN source venv/bin/activate \
+    && pip install . \
+    && python -c "import datastream"
 
 ENTRYPOINT [ "bash" ]
