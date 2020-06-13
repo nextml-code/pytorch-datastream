@@ -17,7 +17,6 @@ sampling, and finally converting to a ``torch.utils.data.DataLoader``.
 Install
 =======
 
-.. highlight::
 .. code-block::
 
     pip install pytorch-datastream
@@ -30,7 +29,6 @@ and non-standard cases. It is not meant to be an exhaustive list. See the
 `documentation <https://pytorch-datastream.readthedocs.io/en/latest/>`_ for 
 a more extensive list on API and usage.
 
-.. highlight:: python
 .. code-block:: python
 
     Dataset.from_subscriptable
@@ -56,7 +54,6 @@ a more extensive list on API and usage.
 Dataset from subscriptable
 --------------------------
 
-.. highlight:: python
 .. code-block:: python
 
     from datastream import Dataset
@@ -81,7 +78,6 @@ Dataset from subscriptable
 Dataset from pandas dataframe
 -----------------------------
 
-.. highlight:: python
 .. code-block:: python
 
     from PIL import Image
@@ -113,7 +109,6 @@ Dataset from pandas dataframe
 Datastream to pytorch data loader
 ---------------------------------
 
-.. highlight:: python
 .. code-block:: python
 
     data_loader = (
