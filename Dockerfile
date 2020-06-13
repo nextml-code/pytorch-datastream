@@ -11,7 +11,8 @@ COPY requirements.txt ./
 
 RUN virtualenv venv \
     && source venv/bin/activate \
-    && pip install --requirement requirements.txt
+    && pip install --requirement requirements.txt \
+    && pip install pytest
 
 COPY .git/ ./.git/
 COPY setup.* ./
@@ -24,4 +25,6 @@ RUN source venv/bin/activate \
     && pip install . \
     && python -c "import datastream"
 
-ENTRYPOINT [ "bash" ]
+RUN echo 'source venv/bin/activate' > ~/.bashrc
+
+ENTRYPOINT [ "/bin/bash", "-i" ]
