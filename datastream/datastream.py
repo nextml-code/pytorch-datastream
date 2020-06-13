@@ -675,10 +675,7 @@ def test_datastream_simple_weights():
 
     samples = list(datastream.data_loader(batch_size=1))
 
-    if len(samples) != 2:
-        raise AssertionError(
-            'Expected 2 samples due to proportion 0.5 and dataset length 4'
-        )
+    assert len(samples) == 2
 
     for sample in samples:
         if sample['index'] in removed_indices:
