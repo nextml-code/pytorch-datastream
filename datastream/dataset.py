@@ -1,6 +1,6 @@
 from __future__ import annotations
 from pydantic import BaseModel
-from typing import Tuple, Callable, Any, Union, List
+from typing import Tuple, Callable, Any, Union, List, TypeVar, Generic
 from functools import partial
 from itertools import repeat, chain
 import numpy as np
@@ -9,7 +9,10 @@ import torch
 from datastream import starcompose, star
 
 
-class Dataset(BaseModel, torch.utils.data.Dataset):
+A = TypeVar('A')
+B = TypeVar('B')
+
+class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
     '''
     A ``Dataset`` is a mapping that allows pipelining of functions in a 
     readable syntax.
@@ -35,7 +38,7 @@ class Dataset(BaseModel, torch.utils.data.Dataset):
     source: pd.DataFrame
     length: int
     functions: Tuple[Callable[..., Any], ...]
-    composed_fn: Callable[..., Any]
+    composed_fn: Callable[..., A]
 
     class Config:
         arbitrary_types_allowed = True
@@ -71,7 +74,7 @@ class Dataset(BaseModel, torch.utils.data.Dataset):
         )
 
     @staticmethod
-    def from_dataframe(dataframe: pd.DataFrame) -> Dataset:
+    def from_dataframe(dataframe: pd.DataFrame) -> Dataset[pd.Series]:
         '''Create ``Dataset`` based on ``pandas.DataFrame``.'''
         return Dataset(
             source=dataframe,
@@ -79,7 +82,7 @@ class Dataset(BaseModel, torch.utils.data.Dataset):
             functions=tuple([lambda df, index: df.iloc[index]]),
         )
 
-    def __getitem__(self, index):
+    def __getitem__(self: Dataset[A], index: int) -> A:
         return self.composed_fn(self.source, index)
 
     def __len__(self):
@@ -94,11 +97,21 @@ class Dataset(BaseModel, torch.utils.data.Dataset):
     def __repr__(self):
         return str(self)
 
-    def __add__(self, other: Dataset) -> Dataset:
+    def __add__(self: Dataset[A], other: Dataset[B]) -> Dataset[Union[A, B]]:
         return Dataset.concat([self, other])
 
-    def map(self, function: Callable) -> Dataset:
-        '''Append a function to the dataset pipeline.'''
+    def map(self: Dataset[A], function: Callable[..., B]) -> Dataset[B]:
+        '''
+        Creates a new dataset with the function added to the dataset pipeline.
+        Returned tuples are expanded as \\*args for the next mapped function.
+
+        >>> (
+        ...     Dataset.from_subscriptable([1, 2, 3])
+        ...     .map(lambda number: (number, number + 1))
+        ...     .map(lambda number, plus_one: number + plus_one)
+        ... )[-1]
+        7
+        '''
         return Dataset(
             source=self.source,
             length=self.length,
@@ -106,7 +119,7 @@ class Dataset(BaseModel, torch.utils.data.Dataset):
         )
 
     # TODO: handle input better. Only allow masks?
-    def subset(self, indices_or_mask: Union[pd.Series, np.array, List[int]]) -> Dataset:
+    def subset(self, indices_or_mask: Union[pd.Series, np.array, List[int]]) -> Dataset[A]:
         '''
         Select a subset of the dataset using a ``pd.Series`` mask or indices.
         '''
@@ -119,7 +132,7 @@ class Dataset(BaseModel, torch.utils.data.Dataset):
             functions=self.functions,
         )
 
-    def zip_index(self) -> Dataset:
+    def zip_index(self: Dataset[A]) -> Dataset[Tuple[A, int]]:
         '''
         Zip the output with its index. The output of the pipeline will be
         a tuple ``(output, index)``.
@@ -162,11 +175,11 @@ class Dataset(BaseModel, torch.utils.data.Dataset):
         return to_concat
 
     @staticmethod
-    def concat(datasets: List[Dataset]) -> Dataset:
+    def concat(datasets: List[Dataset]) -> Dataset[B]:
         '''
         Concatenate multiple datasets together so that they behave like a
         single dataset. Consider using ``Datastream.merge`` if you have multiple
-        data sources instead.
+        data sources.
         '''
         from_concat_mapping = Dataset.create_from_concat_mapping(datasets)
 
@@ -212,10 +225,11 @@ class Dataset(BaseModel, torch.utils.data.Dataset):
         return to_concat
 
     @staticmethod
-    def combine(datasets: List[Dataset]) -> Dataset:
+    def combine(datasets: List[Dataset]) -> Dataset[Tuple]:
         '''
         Zip multiple datasets together so that all combinations of examples
-        are possible creating tuples like ``(example1, example2, ...)``.
+        are possible (i.e. the product) creating tuples like
+        ``(example1, example2, ...)``.
         '''
         from_combine_mapping = Dataset.create_from_combine_mapping(datasets)
 
@@ -234,10 +248,13 @@ class Dataset(BaseModel, torch.utils.data.Dataset):
         )
 
     @staticmethod
-    def zip(datasets: List[Dataset]) -> Dataset:
+    def zip(datasets: List[Dataset]) -> Dataset[Tuple]:
         '''
         Zip multiple datasets together so that examples with matching indices
         create tuples like ``(example1, example2, ...)``.
+
+        The length of the created dataset is the minimum length of the zipped
+        datasets.
         '''
         return Dataset(
             source=pd.DataFrame(dict(dataset=datasets)),
