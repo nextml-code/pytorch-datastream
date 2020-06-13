@@ -105,17 +105,29 @@ class Dataset(BaseModel, torch.utils.data.Dataset):
             functions=self.functions + tuple([function]),
         )
 
-    # TODO: handle input better. Only allow masks?
-    def subset(self, indices_or_mask: Union[pd.Series, np.array, List[int]]) -> Dataset:
+    def subset(
+        self, mask: Union[pd.Series, np.array, List[bool]]
+    ) -> Dataset:
         '''
-        Select a subset of the dataset using a ``pd.Series`` mask or indices.
+        Select a subset of the dataset using a boolean mask.
         '''
-        if type(indices_or_mask) is pd.Series:
-            indices_or_mask = np.argwhere(indices_or_mask.values).squeeze(1)
+        if isinstance(mask, list):
+            mask = np.array(mask)
+        elif isinstance(mask, pd.Series):
+            mask = mask.values
 
+        if len(mask.shape) != 1:
+            raise AssertionError('Expected single dimension in mask')
+
+        if len(mask) != len(self):
+            raise AssertionError(
+                'Expected mask to have the same length as the dataset'
+            )
+
+        indices = np.argwhere(mask).squeeze(1)
         return Dataset(
-            source=self.source.iloc[indices_or_mask],
-            length=len(indices_or_mask),
+            source=self.source.iloc[indices],
+            length=len(indices),
             functions=self.functions,
         )
 
@@ -257,22 +269,25 @@ def test_subscript():
         Dataset.from_dataframe(number_df).map(lambda row: row['number'])
     ):
 
-        if dataset[-1] != number_list[-1]:
-            raise AssertionError('Unexpected result from dataset subscript')
+        assert dataset[-1] == number_list[-1]
 
         mapped_dataset = dataset.map(lambda number: number * 2)
 
-        if mapped_dataset[-1] != number_list[-1] * 2:
-            raise AssertionError(
-                'Unexpected result from dataset subscript after map'
-            )
+        assert mapped_dataset[-1] == number_list[-1] * 2
 
 
 def test_subset():
-    dataset = Dataset.from_subscriptable([4, 7, 12]).subset([1, 2])
+    numbers = [4, 7, 12]
+    dataset = Dataset.from_subscriptable(numbers).subset([False, True, True])
 
-    if dataset[0] != 7:
-        raise AssertionError('Unexpected result from subset dataset')
+    assert dataset[0] == numbers[1]
+
+    dataframe = pd.DataFrame(dict(number=numbers))
+    dataset = (
+        Dataset.from_dataframe(dataframe)
+        .subset(dataframe['number'] >= 12)
+    )
+    assert dataset[0]['number'] == numbers[2]
 
 
 def test_concat_dataset():
@@ -281,8 +296,7 @@ def test_concat_dataset():
         Dataset.from_subscriptable(list(range(4))),
     ])
 
-    if dataset[6] != 1:
-        raise AssertionError('Unexpected result from Dataset.concat')
+    assert dataset[6] == 1
 
 
 def test_zip_dataset():
@@ -291,8 +305,7 @@ def test_zip_dataset():
         Dataset.from_subscriptable(list(range(4))),
     ])
 
-    if dataset[3] != (3, 3):
-        raise AssertionError('Unexpected result from Dataset.zip')
+    assert dataset[3] == (3, 3)
 
 
 def test_combine_dataset():
