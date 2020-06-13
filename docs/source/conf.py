@@ -23,7 +23,12 @@ copyright = '2020, Richard Löwenström, Felix Abrahamsson, Jim Holmström'
 author = 'Richard Löwenström, Felix Abrahamsson, Jim Holmström'
 
 # The full version, including alpha/beta/rc tags
-release = '0.1.0'
+# release = '0.1.0'
+from pkg_resources import get_distribution, DistributionNotFound
+try:
+    release = get_distribution('pytorch-datastream').version
+except DistributionNotFound:
+    pass
 
 
 # -- General configuration ---------------------------------------------------
