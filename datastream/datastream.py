@@ -118,7 +118,7 @@ class Datastream(BaseModel, Generic[A]):
 
     def map(self: Datastream[A], fn: Callable[..., B]) -> Datastream[B]:
         '''
-        Creates a new Datastream with a new mapped dataset. See Dataset.map
+        Creates a new Datastream with a new mapped dataset. See ``Dataset.map``
         for details.
         '''
         return Datastream(
