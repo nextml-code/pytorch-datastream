@@ -19,7 +19,7 @@ sys.setrecursionlimit(1500)
 # -- Project information -----------------------------------------------------
 
 project = 'pytorch-datastream'
-copyright = '2020, Richard Löwenström, Felix Abrahamsson, Jim Holmström'
+copyright = '2020, Aiwizo'
 author = 'Richard Löwenström, Felix Abrahamsson, Jim Holmström'
 
 # The full version, including alpha/beta/rc tags
