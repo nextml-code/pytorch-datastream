@@ -1,4 +1,6 @@
-# Pytorch Datastream
+==================
+Pytorch Datastream
+==================
 
 This is a simple library for creating very readable dataset pipelines and
 reusing best practices for issues such as imbalanced datasets. There are
@@ -12,14 +14,24 @@ tensorflow 2's ``tf.data.Dataset``.
 It provides a simple solution to oversampling / stratification, weighted
 sampling, and finally converting to a ``torch.utils.data.DataLoader``.
 
-## Install
+Install
+=======
+
+.. highlight::
+.. code-block::
 
     pip install pytorch-datastream
 
-## Usage
+Usage
+=====
 
 The list below is meant to showcase functions that are useful in most standard
-and non-standard cases. It is not meant to be an exhaustive list.
+and non-standard cases. It is not meant to be an exhaustive list. See the 
+`documentation <https://pytorch-datastream.readthedocs.io/en/latest/>`_ for 
+a more extensive list on API and usage.
+
+.. highlight:: python
+.. code-block:: python
 
     Dataset.from_subscriptable
     Dataset.from_dataframe
@@ -41,7 +53,11 @@ and non-standard cases. It is not meant to be an exhaustive list.
         .multi_sample
         .sample_proportion
 
-### Dataset from subscriptable
+Dataset from subscriptable
+--------------------------
+
+.. highlight:: python
+.. code-block:: python
 
     from datastream import Dataset
 
@@ -62,7 +78,11 @@ and non-standard cases. It is not meant to be an exhaustive list.
 
     print(dataset[2]) # ('banana', 28)
 
-### Dataset from pandas dataframe
+Dataset from pandas dataframe
+-----------------------------
+
+.. highlight:: python
+.. code-block:: python
 
     from PIL import Image
     from imgaug import augmenters as iaa
@@ -90,7 +110,11 @@ and non-standard cases. It is not meant to be an exhaustive list.
         .map(preprocess)
     )
 
-### Datastream to pytorch data loader
+Datastream to pytorch data loader
+---------------------------------
+
+.. highlight:: python
+.. code-block:: python
 
     data_loader = (
         Datastream(dataset)
@@ -101,7 +125,8 @@ and non-standard cases. It is not meant to be an exhaustive list.
         )
     )
 
-### More usage examples
+More usage examples
+-------------------
 
-See the documentation for examples with oversampling / stratification and
-weighted sampling.
+See the `documentation <https://pytorch-datastream.readthedocs.io/en/latest/>`_
+for examples with oversampling / stratification and weighted sampling.
