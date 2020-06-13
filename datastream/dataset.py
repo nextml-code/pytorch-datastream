@@ -35,7 +35,7 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
         ('banana', 28)
     '''
 
-    source: pd.DataFrame
+    dataframe: pd.DataFrame
     length: int
     functions: Tuple[Callable[..., Any], ...]
     composed_fn: Callable[..., A]
@@ -46,13 +46,13 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
 
     def __init__(
         self,
-        source: pd.DataFrame,
+        dataframe: pd.DataFrame,
         length: int,
         functions: Tuple[Callable[..., Any], ...],
     ):
         BaseModel.__init__(
             self,
-            source=source,
+            dataframe=dataframe,
             length=length,
             functions=functions,
             composed_fn=starcompose(*functions),
@@ -77,13 +77,13 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
     def from_dataframe(dataframe: pd.DataFrame) -> Dataset[pd.Series]:
         '''Create ``Dataset`` based on ``pandas.DataFrame``.'''
         return Dataset(
-            source=dataframe,
+            dataframe=dataframe,
             length=len(dataframe),
             functions=tuple([lambda df, index: df.iloc[index]]),
         )
 
     def __getitem__(self: Dataset[A], index: int) -> A:
-        return self.composed_fn(self.source, index)
+        return self.composed_fn(self.dataframe, index)
 
     def __len__(self):
         return self.length
@@ -113,7 +113,7 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
         7
         '''
         return Dataset(
-            source=self.source,
+            dataframe=self.dataframe,
             length=self.length,
             functions=self.functions + tuple([function]),
         )
@@ -139,7 +139,7 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
 
         indices = np.argwhere(mask).squeeze(1)
         return Dataset(
-            source=self.source.iloc[indices],
+            dataframe=self.dataframe.iloc[indices],
             length=len(indices),
             functions=self.functions,
         )
@@ -151,10 +151,10 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
         '''
         composed_fn = self.composed_fn
         return Dataset(
-            source=self.source,
+            dataframe=self.dataframe,
             length=self.length,
-            functions=tuple([lambda source, index: (
-                composed_fn(source, index),
+            functions=tuple([lambda dataframe, index: (
+                composed_fn(dataframe, index),
                 index,
             )]),
         )
@@ -196,7 +196,7 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
         from_concat_mapping = Dataset.create_from_concat_mapping(datasets)
 
         return Dataset(
-            source=pd.DataFrame(dict(dataset=datasets)),
+            dataframe=pd.DataFrame(dict(dataset=datasets)),
             length=sum(map(len, datasets)),
             functions=(
                 lambda datasets, index: (
@@ -246,7 +246,7 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
         from_combine_mapping = Dataset.create_from_combine_mapping(datasets)
 
         return Dataset(
-            source=pd.DataFrame(dict(dataset=datasets)),
+            dataframe=pd.DataFrame(dict(dataset=datasets)),
             length=np.prod(list(map(len, datasets))),
             functions=(
                 lambda datasets, index: (
@@ -269,7 +269,7 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
         datasets.
         '''
         return Dataset(
-            source=pd.DataFrame(dict(dataset=datasets)),
+            dataframe=pd.DataFrame(dict(dataset=datasets)),
             length=min(map(len, datasets)),
             functions=tuple([lambda datasets, index: tuple(
                 dataset[index] for dataset in datasets['dataset']
