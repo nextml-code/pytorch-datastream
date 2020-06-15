@@ -119,11 +119,23 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
         )
 
     def subset(
-        self, mask: Union[pd.Series, np.array, List[bool]]
+        self, mask_fn: Callable[[pd.DataFrame], Union[pd.Series, np.array, List[bool]]]  
     ) -> Dataset[A]:
         '''
-        Select a subset of the dataset using a boolean mask.
+        Select a subset of the dataset using a function that receives the
+        source dataframe as input and is expected to return a boolean mask.
+
+        >>> (
+        ...     Dataset.from_dataframe(pd.DataFrame(dict(
+        ...        number=[1, 2, 3]
+        ...     )))
+        ...     .subset(lambda df: df['number'] <= 2)
+        ...     .map(lambda row: row['number'])
+        ... )[-1]
+        2
         '''
+
+        mask = mask_fn(self.dataframe)
         if isinstance(mask, list):
             mask = np.array(mask)
         elif isinstance(mask, pd.Series):
@@ -295,14 +307,16 @@ def test_subscript():
 
 def test_subset():
     numbers = [4, 7, 12]
-    dataset = Dataset.from_subscriptable(numbers).subset([False, True, True])
+    dataset = Dataset.from_subscriptable(numbers).subset(
+        lambda numbers_df: [False, True, True]
+    )
 
     assert dataset[0] == numbers[1]
 
     dataframe = pd.DataFrame(dict(number=numbers))
     dataset = (
         Dataset.from_dataframe(dataframe)
-        .subset(dataframe['number'] >= 12)
+        .subset(lambda df: df['number'] >= 12)
     )
     assert dataset[0]['number'] == numbers[2]
 
