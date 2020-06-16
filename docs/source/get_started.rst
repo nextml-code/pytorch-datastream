@@ -73,12 +73,12 @@ augmented, and preprocessed before training.
         .map(preprocess)
     )
 
-Datastream to pytorch data loader
+Dataset to pytorch data loader
 ---------------------------------
 The final step of converting the datastream to a ``torch.data.util.DataLoader``
 before using it in your training / evaluation loop. You can specify an
 alternative epoch length if you do not want it to be defined by the dataset.
-This is very useful when oversampling or weighting because epoch length quickly
+This is useful when oversampling or weighting because epoch length quickly
 loses its meaning then.
 
 .. highlight:: python
@@ -93,7 +93,7 @@ loses its meaning then.
         )
     )
 
-Datastream to pytorch data loader for evaluation
+Dataset to pytorch data loader for evaluation
 ------------------------------------------------
 You can optionally specify your own sampler when creating a datastream.
 In this case we specify ``torch.utils.data.SequentialSampler`` which will give
@@ -113,7 +113,7 @@ sample by weight.
 
 Merge / stratify / oversample datastreams
 -----------------------------------------
-It is very common to have imbalanced datasets or multiple data sources of very
+It is common to have imbalanced datasets or multiple data sources of very
 different length and dissimilar characteristics. ``Datastream.merge`` provides
 a simple intuitive way to construct batches that give a good training signal
 in these cases.
