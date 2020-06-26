@@ -6,6 +6,9 @@ def starcompose(*transforms):
 
     Use starcompose.debug for verbose output when debugging
     '''
+
+    # TODO: consider doing starcompose with inner function calls rather than
+    # a loop
     def _compose(*x):
         for t in transforms:
             if type(x) is tuple:
