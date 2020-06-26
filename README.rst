@@ -36,6 +36,7 @@ a more extensive list on API and usage.
     Dataset
         .map
         .subset
+        .split
 
     Datastream.merge
     Datastream.zip

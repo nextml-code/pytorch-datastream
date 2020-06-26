@@ -1,14 +1,18 @@
 from __future__ import annotations
 from pydantic import BaseModel
-from typing import Tuple, Callable, Any, Union, List, TypeVar, Generic
+from typing import (
+    Tuple, Callable, Any, Union, List, TypeVar, Generic, Dict, Optional
+)
+from pathlib import Path
 from functools import partial
 from itertools import repeat, chain
 import numpy as np
 import pandas as pd
 import torch
-from datastream import starcompose, star
+from datastream import tools
 
 
+# TODO: better typevar names
 A = TypeVar('A')
 B = TypeVar('B')
 
@@ -55,7 +59,7 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
             dataframe=dataframe,
             length=length,
             functions=functions,
-            composed_fn=starcompose(*functions),
+            composed_fn=tools.starcompose(*functions),
         )
 
     @staticmethod
@@ -100,6 +104,16 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
     def __add__(self: Dataset[A], other: Dataset[B]) -> Dataset[Union[A, B]]:
         return Dataset.concat([self, other])
 
+    def __iter__(self):
+        for index in range(len(self)):
+            yield self[index]
+
+    def __eq__(self: Dataset[A], other: Dataset[B]) -> bool:
+        for item1, item2 in zip(self, other):
+            if item1 != item2:
+                return False
+        return True
+
     def map(self: Dataset[A], function: Callable[..., B]) -> Dataset[B]:
         '''
         Creates a new dataset with the function added to the dataset pipeline.
@@ -119,7 +133,9 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
         )
 
     def subset(
-        self, mask_fn: Callable[[pd.DataFrame], Union[pd.Series, np.array, List[bool]]]  
+        self, mask_fn: Callable[
+            [pd.DataFrame], Union[pd.Series, np.array, List[bool]]
+        ]  
     ) -> Dataset[A]:
         '''
         Select a subset of the dataset using a function that receives the
@@ -155,6 +171,58 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
             length=len(indices),
             functions=self.functions,
         )
+
+    def split(
+        self,
+        key_column: str,
+        proportions: Dict[str, float],
+        filepath: Optional[Union[str, Path]] = None,
+        stratify_column: Optional[str] = None,
+        # TODO: allow seed, if there will be no new data then this can be nice
+        # seed: Optional[int] = None,
+    ) -> Dict[str, Dataset[A]]:
+        '''
+        Split dataset into multiple parts. Optionally you can chose to stratify
+        on a column in the source dataframe or save the split to a json file.
+
+        >>> split_file = Path('doctest_split_dataset.json')
+        >>> split_datasets = (
+        ...     Dataset.from_dataframe(pd.DataFrame(dict(
+        ...         index=np.arange(100),
+        ...         number=np.random.randn(100),
+        ...     )))
+        ...     .split(
+        ...         key_column='index',
+        ...         proportions=dict(
+        ...             train=0.7,
+        ...             early_stopping=0.1,
+        ...             public_test=0.1,
+        ...             private_test=0.1,
+        ...         ),
+        ...         filepath=split_file,
+        ...     )
+        ... )
+        >>> len(split_datasets['train'])
+        70
+        >>> split_file.unlink()  # clean up after doctest
+        '''
+        if filepath is not None:
+            filepath = Path(filepath)
+
+        return {
+            split_name: Dataset(
+                dataframe=dataframe,
+                length=len(dataframe),
+                functions=self.functions,
+            )
+            for split_name, dataframe in tools.split_dataframe(
+                self.dataframe,
+                key_column,
+                proportions,
+                filepath,
+                stratify_column,
+            ).items()
+        }
 
     def zip_index(self: Dataset[A]) -> Dataset[Tuple[A, int]]:
         '''
@@ -202,8 +270,8 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
     def concat(datasets: List[Dataset]) -> Dataset[B]:
         '''
         Concatenate multiple datasets together so that they behave like a
-        single dataset. Consider using ``Datastream.merge`` if you have multiple
-        data sources.
+        single dataset. Consider using ``Datastream.merge`` if you have
+        multiple data sources.
         '''
         from_concat_mapping = Dataset.create_from_concat_mapping(datasets)
 
@@ -289,6 +357,14 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
         )
 
 
+def test_equal():
+    dataset1 = Dataset.from_subscriptable([4, 7, 12])
+    assert dataset1 == dataset1
+
+    dataset2 = Dataset.from_subscriptable([4, 7, 13])
+    assert dataset1 != dataset2
+
+
 def test_subscript():
     number_list = [4, 7, 12]
     number_df = pd.DataFrame(dict(number=number_list))
@@ -358,3 +434,38 @@ def test_combine_dataset():
         )
         for index, inner_indices in enumerate(indices)
     )
+   
+
+def test_split_dataset():
+    dataset = Dataset.from_dataframe(pd.DataFrame(dict(
+        index=np.arange(100),
+        number=np.random.randn(100),
+        stratify=np.concatenate([np.ones(50), np.zeros(50)]),
+    ))).map(tuple)
+
+    split_file = Path('test_split_dataset.json')
+    proportions = dict(
+        gradient=0.7,
+        early_stopping=0.15,
+        compare=0.15,
+    )
+
+    kwargs = dict(
+        key_column='index',
+        proportions=proportions,
+        filepath=split_file,
+        stratify_column='stratify',
+    )
+
+    split_datasets1 = dataset.split(**kwargs)
+    split_datasets2 = dataset.split(**kwargs)
+    split_datasets3 = dataset.split(
+        key_column='index',
+        proportions=proportions,
+        stratify_column='stratify',
+    )
+
+    split_file.unlink()
+
+    assert split_datasets1 == split_datasets2
+    assert split_datasets1 != split_datasets3

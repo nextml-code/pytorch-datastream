@@ -7,7 +7,8 @@ from collections import namedtuple
 import numpy as np
 import pandas as pd
 import torch
-from datastream import starcompose, star, repeat_map_chain, Dataset
+from datastream.tools import starcompose, star, repeat_map_chain
+from datastream import Dataset
 
 
 class StandardSampler(BaseModel, torch.utils.data.Sampler):

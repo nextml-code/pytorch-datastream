@@ -1,7 +1,7 @@
 from itertools import repeat, chain
 from functools import partial
 
-from datastream import starcompose
+from datastream.tools import starcompose
 
 
 def mk_repeat_map_chain(fn):

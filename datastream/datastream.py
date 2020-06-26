@@ -67,9 +67,9 @@ class Datastream(BaseModel, Generic[A]):
 
     @staticmethod
     def merge(datastreams_and_ns: Tuple[Union[
-        Datastream,
-        Tuple[Datastream, int]
-    ], ...]) -> Datastream[B]:
+        Datastream[A],
+        Tuple[Datastream[A], int]
+    ], ...]) -> Datastream[A]:
         '''
         Merge multiple datastreams by interleaving them. Optionally you can
         define different lengths per ``Datastream``.
@@ -103,7 +103,7 @@ class Datastream(BaseModel, Generic[A]):
         '''
         Zip multiple datastreams together so that all combinations of examples
         are possible (i.e. the product) creating tuples like
-        ``(example1, example2, ...)``. The samples are drawn independently 
+        ``(example1, example2, ...)``. The samples are drawn independently
         from each underlying datastream.
         '''
         return Datastream(
@@ -169,7 +169,10 @@ class Datastream(BaseModel, Generic[A]):
         '''Update sample weight for specific example **in-place**.'''
         self.sampler.update_example_weight_(weight, index)
 
-    def sample_proportion(self: Datastream[A], proportion: float) -> Datastream[A]:
+    def sample_proportion(
+        self: Datastream[A],
+        proportion: float,
+    ) -> Datastream[A]:
         '''
         Create new ``Datastream`` with changed proportion. This changes the
         numbers of drawn samples before restarting sampling with new weights
