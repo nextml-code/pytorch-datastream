@@ -287,15 +287,12 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
         from_concat_mapping = Dataset.create_from_concat_mapping(datasets)
 
         return Dataset(
-            dataframe=pd.DataFrame(dict(dataset=datasets)),
+            dataframe=pd.DataFrame(dict(dataset_index=range(len(datasets)))),
             length=sum(map(len, datasets)),
             functions=(
-                lambda datasets, index: (
-                    datasets,
-                    *from_concat_mapping(index),
-                ),
-                lambda datasets, dataset_index, inner_index: (
-                    datasets.iloc[dataset_index]['dataset'][inner_index]
+                lambda index_dataframe, index: from_concat_mapping(index),
+                lambda dataset_index, inner_index: (
+                    datasets[dataset_index][inner_index]
                 ),
             ),
         )
@@ -337,17 +334,14 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
         from_combine_mapping = Dataset.create_from_combine_mapping(datasets)
 
         return Dataset(
-            dataframe=pd.DataFrame(dict(dataset=datasets)),
+            dataframe=pd.DataFrame(dict(dataset_index=range(len(datasets)))),
             length=np.prod(list(map(len, datasets))),
             functions=(
-                lambda datasets, index: (
-                    datasets['dataset'],
-                    from_combine_mapping(index),
-                ),
-                lambda datasets, indices: tuple([
+                lambda index_dataframe, index: from_combine_mapping(index),
+                lambda *indices: tuple([
                     dataset[index] for dataset, index in zip(datasets, indices)
                 ]),
-            )
+            ),
         )
 
     @staticmethod
@@ -360,10 +354,10 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
         datasets.
         '''
         return Dataset(
-            dataframe=pd.DataFrame(dict(dataset=datasets)),
+            dataframe=pd.DataFrame(dict(dataset_index=range(len(datasets)))),
             length=min(map(len, datasets)),
-            functions=tuple([lambda datasets, index: tuple(
-                dataset[index] for dataset in datasets['dataset']
+            functions=tuple([lambda index_dataframe, index: tuple(
+                dataset[index] for dataset in datasets
             )]),
         )
 
