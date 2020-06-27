@@ -7,7 +7,7 @@ import pandas as pd
 from datastream.tools import json
 
 
-def split_dataframe(
+def split_dataframes(
     dataframe: pd.DataFrame,
     key_column: str,
     proportions: Dict[str, float],
@@ -139,9 +139,9 @@ def mock_dataframe():
     ))
 
 
-def test_split_dataframe():
-    split_file = Path('test_split_dataframe.json')
-    split_dataframes = split_dataframe(
+def test_standard():
+    split_file = Path('test_standard.json')
+    split_dataframes_ = split_dataframes(
         mock_dataframe(),
         key_column='index',
         proportions=dict(
@@ -155,22 +155,101 @@ def test_split_dataframe():
 
     split_file.unlink()
 
-    assert tuple(map(len, split_dataframes.values())) == (80, 10, 10)
+    assert tuple(map(len, split_dataframes_.values())) == (80, 10, 10)
 
 
 def test_validate_proportions():
     from pytest import raises
 
-    split_file = Path('test_split_dataframe.json')
+    split_file = Path('test_validate_proportions.json')
     with raises(ValueError):
-        split_dataframe(
+        split_dataframes(
             mock_dataframe(),
             key_column='index',
-            proportions=dict(
-                train=0.4,
-                test=0.4,
-            ),
+            proportions=dict(train=0.4, test=0.4),
             filepath=split_file,
             stratify_column='stratify',
         )
 
+
+def test_missing_key_column():
+    from pytest import raises
+
+    split_file = Path('test_missing_key_column.json')
+    with raises(KeyError):
+        split_dataframes(
+            mock_dataframe(),
+            key_column='should_fail',
+            proportions=dict(train=0.8, test=0.2),
+            filepath=split_file,
+        )
+
+    with raises(FileNotFoundError):
+        split_file.unlink()
+
+
+def test_missing_stratify_column():
+    from pytest import raises
+
+    with raises(KeyError):
+        split_dataframes(
+            mock_dataframe(),
+            key_column='index',
+            proportions=dict(train=0.8, test=0.2),
+            stratify_column='should_fail'
+        )
+
+
+def test_no_split():
+    '''we do not need to support this'''
+    split_dataframes(
+        mock_dataframe(),
+        key_column='index',
+        proportions=dict(all=1.0),
+        stratify_column='stratify'
+    )
+
+
+def test_split_empty():
+    split_dataframes_ = split_dataframes(
+        mock_dataframe().iloc[:0],
+        key_column='index',
+        proportions=dict(train=0.8, test=0.2),
+        stratify_column='stratify'
+    )
+    for df in split_dataframes_.values():
+        assert len(df) == 0
+
+
+def test_split_single_row():
+    split_dataframes_ = split_dataframes(
+        mock_dataframe().iloc[:1],
+        key_column='index',
+        proportions=dict(train=0.9999, test=0.0001),
+        stratify_column='stratify'
+    )
+    assert len(split_dataframes_['train']) == 1
+    assert len(split_dataframes_['test']) == 0
+
+
+def test_changed_split_names():
+    from pytest import raises
+
+    split_file = Path('test_changed_split_names.json')
+    split_dataframes(
+        mock_dataframe(),
+        key_column='index',
+        proportions=dict(train=0.8, test=0.2),
+        filepath=split_file,
+        stratify_column='stratify',
+    )
+
+    with raises(ValueError):
+        split_dataframes(
+            mock_dataframe(),
+            key_column='index',
+            proportions=dict(should_fail=0.8, test=0.2),
+            filepath=split_file,
+            stratify_column='stratify',
+        )
+    split_file.unlink()

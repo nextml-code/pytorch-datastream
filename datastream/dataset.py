@@ -224,7 +224,7 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
                 length=len(dataframe),
                 functions=self.functions,
             )
-            for split_name, dataframe in tools.split_dataframe(
+            for split_name, dataframe in tools.split_dataframes(
                 self.dataframe,
                 key_column,
                 proportions,
