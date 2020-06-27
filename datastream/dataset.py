@@ -66,7 +66,10 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
     def from_subscriptable(subscriptable) -> Dataset:
         '''
         Create ``Dataset`` based on subscriptable i.e. implements
-        ``__get_item__``. Mostly useful for simple examples.
+        ``__get_item__``. Should only be used for simple examples as a
+        ``Dataset`` created with this method does not support methods that
+        require a source dataframe (i.e. ``Dataset.split`` and
+        ``Dataset.subset``)
         '''
         return (
             Dataset.from_dataframe(
