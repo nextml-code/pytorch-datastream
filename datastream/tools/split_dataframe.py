@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from datastream import json
+from datastream.tools import json
 
 
 def split_dataframe(
@@ -52,7 +52,7 @@ def split_dataframe(
         else:
             for strata in stratas(dataframe, stratify_column):
                 split = split_proportion(
-                    dataframe[key_column],
+                    strata[key_column],
                     proportion,
                     split_name,
                     split,
@@ -74,9 +74,8 @@ def split_dataframe(
 
 def stratas(dataframe, stratify_column):
     return [
-        strata_value for strata_value, _ in (
-            dataframe[stratify_column].value_counts().iteritems()
-        )
+        dataframe[lambda df: df[stratify_column] == strata_value]
+        for strata_value in dataframe[stratify_column].unique()
     ]
 
 
@@ -133,7 +132,7 @@ def test_split_dataframe():
     dataframe = pd.DataFrame(dict(
         index=np.arange(100),
         number=np.random.randn(100),
-        stratify=np.concatenate([np.ones(50), np.zeros(50)]),
+        stratify=np.concatenate([np.ones(70), np.zeros(30)]),
     ))
 
     split_file = Path('test_split_dataframe.json')
@@ -142,9 +141,9 @@ def test_split_dataframe():
         dataframe,
         key_column='index',
         proportions=dict(
-            gradient=0.7,
-            early_stopping=0.15,
-            compare=0.15,
+            gradient=0.8,
+            early_stopping=0.1,
+            compare=0.1,
         ),
         filepath=split_file,
         stratify_column='stratify',
@@ -152,4 +151,4 @@ def test_split_dataframe():
 
     split_file.unlink()
 
-    assert tuple(map(len, split_dataframes.values())) == (70, 15, 15)
+    assert tuple(map(len, split_dataframes.values())) == (80, 10, 10)
