@@ -188,6 +188,12 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
         Split dataset into multiple parts. Optionally you can chose to stratify
         on a column in the source dataframe or save the split to a json file.
 
+        Saved splits can handle new examples by continuing from the old split.
+        It can handle:
+        - Changing test size
+        - Adapt after removing examples from dataset
+        - Adapt to new stratification
+
         >>> split_file = Path('doctest_split_dataset.json')
         >>> split_datasets = (
         ...     Dataset.from_dataframe(pd.DataFrame(dict(

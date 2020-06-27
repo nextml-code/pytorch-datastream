@@ -22,14 +22,17 @@ def split_dataframe(
     - Adapt after removing examples from dataset
     - Adapt to new stratification
     '''
-    if abs(sum(proportions.values()) - 1.0) >= 1e-6:
-        raise AssertionError('Expected sum of proportions to be 1')
+    if abs(sum(proportions.values()) - 1.0) >= 1e-5:
+        raise ValueError(' '.join([
+            'Expected sum of proportions to be 1.',
+            f'Proportions were {tuple(proportions.values())}',
+        ]))
     
     if filepath is not None and filepath.exists():
         split = json.read(filepath)
 
         if set(proportions.keys()) != set(split.keys()):
-            raise AssertionError(
+            raise ValueError(
                 'Expected split names in split file to be the same as the keys'
                 'of proportions'
             )
@@ -128,17 +131,18 @@ def selected(k, unassigned):
     ).tolist()  
 
 
-def test_split_dataframe():
-    dataframe = pd.DataFrame(dict(
+def mock_dataframe():
+    return pd.DataFrame(dict(
         index=np.arange(100),
         number=np.random.randn(100),
         stratify=np.concatenate([np.ones(70), np.zeros(30)]),
     ))
 
-    split_file = Path('test_split_dataframe.json')
 
+def test_split_dataframe():
+    split_file = Path('test_split_dataframe.json')
     split_dataframes = split_dataframe(
-        dataframe,
+        mock_dataframe(),
         key_column='index',
         proportions=dict(
             gradient=0.8,
@@ -152,3 +156,21 @@ def test_split_dataframe():
     split_file.unlink()
 
     assert tuple(map(len, split_dataframes.values())) == (80, 10, 10)
+
+
+def test_validate_proportions():
+    from pytest import raises
+
+    split_file = Path('test_split_dataframe.json')
+    with raises(ValueError):
+        split_dataframe(
+            mock_dataframe(),
+            key_column='index',
+            proportions=dict(
+                train=0.4,
+                test=0.4,
+            ),
+            filepath=split_file,
+            stratify_column='stratify',
+        )
+
