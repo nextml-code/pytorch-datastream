@@ -25,10 +25,10 @@ from datastream.samplers import (
 )
 
 
-A = TypeVar('A')
-B = TypeVar('B')
+T = TypeVar('T')
+R = TypeVar('R')
 
-class Datastream(BaseModel, Generic[A]):
+class Datastream(BaseModel, Generic[T]):
     '''
     ``Datastream`` combines a ``Dataset`` and a sampler into a stream of
     examples. By default the samples are drawn without replacement until the
@@ -44,7 +44,7 @@ class Datastream(BaseModel, Generic[A]):
         16
     '''
 
-    dataset: Dataset[A]
+    dataset: Dataset[T]
     sampler: Optional[torch.utils.data.Sampler]
 
     class Config:
@@ -53,7 +53,7 @@ class Datastream(BaseModel, Generic[A]):
 
     def __init__(
         self,
-        dataset: Dataset[A],
+        dataset: Dataset[T],
         sampler: torch.utils.data.Sampler = None
     ):
         super().__init__(
@@ -67,9 +67,9 @@ class Datastream(BaseModel, Generic[A]):
 
     @staticmethod
     def merge(datastreams_and_ns: Tuple[Union[
-        Datastream[A],
-        Tuple[Datastream[A], int]
-    ], ...]) -> Datastream[A]:
+        Datastream[T],
+        Tuple[Datastream[T], int]
+    ], ...]) -> Datastream[T]:
         '''
         Merge multiple datastreams by interleaving them. Optionally you can
         define different lengths per ``Datastream``.
@@ -116,13 +116,15 @@ class Datastream(BaseModel, Generic[A]):
             ])),
         )
 
-    def map(self: Datastream[A], fn: Callable[..., B]) -> Datastream[B]:
+    def map(
+        self: Datastream[T], function: Callable[Union[[T], [...]], R]
+    ) -> Datastream[R]:
         '''
         Creates a new Datastream with a new mapped dataset. See ``Dataset.map``
         for details.
         '''
         return Datastream(
-            self.dataset.map(fn),
+            self.dataset.map(function),
             self.sampler,
         )
 
@@ -144,7 +146,7 @@ class Datastream(BaseModel, Generic[A]):
             self.dataset, sampler=sampler, **kwargs
         )
 
-    def zip_index(self: Datastream[A]) -> Datastream[Tuple[A, int]]:
+    def zip_index(self: Datastream[T]) -> Datastream[Tuple[T, int]]:
         '''
         Zip the output with its underlying `Dataset` index. The output of the
         pipeline will be a tuple ``(output, index)``
@@ -170,9 +172,9 @@ class Datastream(BaseModel, Generic[A]):
         self.sampler.update_example_weight_(weight, index)
 
     def sample_proportion(
-        self: Datastream[A],
+        self: Datastream[T],
         proportion: float,
-    ) -> Datastream[A]:
+    ) -> Datastream[T]:
         '''
         Create new ``Datastream`` with changed proportion. This changes the
         numbers of drawn samples before restarting sampling with new weights
@@ -196,7 +198,7 @@ class Datastream(BaseModel, Generic[A]):
         '''Load saved state from ``Datastream.state_dict``.'''
         return self.sampler.load_state_dict(state_dict['sampler'])
 
-    def multi_sample(self: Datastream[A], n: int) -> Datastream[A]:
+    def multi_sample(self: Datastream[T], n: int) -> Datastream[T]:
         '''
         Split datastream into clones with different sample weights and then
         merge them. The weights when accessed will be a sequence of multiple

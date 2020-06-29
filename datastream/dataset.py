@@ -12,14 +12,13 @@ import torch
 from datastream import tools
 
 
-# TODO: better typevar names
-A = TypeVar('A')
-B = TypeVar('B')
+T = TypeVar('T')
+R = TypeVar('R')
 
-class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
+class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
     '''
-    A ``Dataset`` is a mapping that allows pipelining of functions in a 
-    readable syntax.
+    A ``Dataset[T]`` is a mapping that allows pipelining of functions in a 
+    readable syntax returning an item of type ``T``.
 
         >>> from datastream import Dataset
         >>> fruit_and_cost = (
@@ -42,7 +41,7 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
     dataframe: pd.DataFrame
     length: int
     functions: Tuple[Callable[..., Any], ...]
-    composed_fn: Callable[..., A]
+    composed_fn: Callable[[pd.DataFrame, int], T]
 
     class Config:
         arbitrary_types_allowed = True
@@ -89,7 +88,7 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
             functions=tuple([lambda df, index: df.iloc[index]]),
         )
 
-    def __getitem__(self: Dataset[A], index: int) -> A:
+    def __getitem__(self: Dataset[T], index: int) -> T:
         return self.composed_fn(self.dataframe, index)
 
     def __len__(self):
@@ -104,20 +103,22 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
     def __repr__(self):
         return str(self)
 
-    def __add__(self: Dataset[A], other: Dataset[B]) -> Dataset[Union[A, B]]:
+    def __add__(self: Dataset[T], other: Dataset[R]) -> Dataset[Union[T, R]]:
         return Dataset.concat([self, other])
 
     def __iter__(self):
         for index in range(len(self)):
             yield self[index]
 
-    def __eq__(self: Dataset[A], other: Dataset[B]) -> bool:
+    def __eq__(self: Dataset[T], other: Dataset[R]) -> bool:
         for item1, item2 in zip(self, other):
             if item1 != item2:
                 return False
         return True
 
-    def map(self: Dataset[A], function: Callable[..., B]) -> Dataset[B]:
+    def map(
+        self: Dataset[T], function: Callable[Union[[T], [...]], R]
+    ) -> Dataset[R]:
         '''
         Creates a new dataset with the function added to the dataset pipeline.
         Returned tuples are expanded as \\*args for the next mapped function.
@@ -139,7 +140,7 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
         self, mask_fn: Callable[
             [pd.DataFrame], Union[pd.Series, np.array, List[bool]]
         ]  
-    ) -> Dataset[A]:
+    ) -> Dataset[T]:
         '''
         Select a subset of the dataset using a function that receives the
         source dataframe as input and is expected to return a boolean mask.
@@ -183,7 +184,7 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
         filepath: Optional[Union[str, Path]] = None,
         frozen: Optional[bool] = False,
         seed: Optional[int] = None,
-    ) -> Dict[str, Dataset[A]]:
+    ) -> Dict[str, Dataset[T]]:
         '''
         Split dataset into multiple parts. Optionally you can chose to stratify
         on a column in the source dataframe or save the split to a json file.
@@ -242,7 +243,7 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
             ).items()
         }
 
-    def zip_index(self: Dataset[A]) -> Dataset[Tuple[A, int]]:
+    def zip_index(self: Dataset[T]) -> Dataset[Tuple[T, int]]:
         '''
         Zip the output with its index. The output of the pipeline will be
         a tuple ``(output, index)``.
@@ -285,7 +286,7 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
         return to_concat
 
     @staticmethod
-    def concat(datasets: List[Dataset]) -> Dataset[B]:
+    def concat(datasets: List[Dataset]) -> Dataset[R]:
         '''
         Concatenate multiple datasets together so that they behave like a
         single dataset. Consider using ``Datastream.merge`` if you have
