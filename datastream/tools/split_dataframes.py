@@ -1,10 +1,9 @@
 from __future__ import annotations
 from typing import Tuple, Union, Dict, Optional
 from pathlib import Path
+import json
 import numpy as np
 import pandas as pd
-
-from datastream.tools import json
 
 
 def split_dataframes(
@@ -29,7 +28,7 @@ def split_dataframes(
         ]))
     
     if filepath is not None and filepath.exists():
-        split = json.read(filepath)
+        split = json.loads(filepath.read_text())
 
         if set(proportions.keys()) != set(split.keys()):
             raise ValueError(
@@ -65,7 +64,7 @@ def split_dataframes(
     split[last_split_name] += unassigned(dataframe[key_column], split)
 
     if filepath is not None:
-        json.write(split, filepath)
+        filepath.write_text(json.dumps(split))
 
     return {
         split_name: (
