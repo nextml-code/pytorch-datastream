@@ -42,7 +42,7 @@ def split_dataframes(
             for split_name in proportions.keys()
         }
 
-    if len(dataframe[key_column].unique()) != len(dataframe):
+    if dataframe[key_column].nunique() != len(dataframe):
         raise ValueError(f'key_column {key_column} contains duplicate values')
 
     if frozen:
