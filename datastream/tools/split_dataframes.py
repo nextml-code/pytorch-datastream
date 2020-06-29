@@ -33,8 +33,8 @@ def split_dataframes(
 
         if set(proportions.keys()) != set(split.keys()):
             raise ValueError(
-                'Expected split names in split file to be the same as the keys'
-                'of proportions'
+                'Expected split names in split file to be the same as the'
+                'keys of proportions'
             )
     else:
         split = {
@@ -42,14 +42,15 @@ def split_dataframes(
             for split_name in proportions.keys()
         }
 
-    if (
-        frozen
-        and set(sum(split.values(), list())) != set(dataframe[key_column])
-    ):
-        raise ValueError(' '.join([
-            'Frozen split requires the dataframe and saved split to contain',
-            'the same keys',
-        ]))
+    if frozen:
+        if sum(map(len, split.values())) == 0:
+            raise ValueError('Frozen split is empty')
+
+        if not set(sum(split.values(), list())) <= set(dataframe[key_column]):
+            raise ValueError(' '.join([
+                'Frozen split requires that the dataframe contains the entire',
+                'saved splits',
+            ]))
 
     if len(dataframe[key_column].unique()) != len(dataframe):
         raise KeyError(f'key_column {key_column} does not have unique values')
@@ -299,4 +300,3 @@ def test_frozen():
             frozen=True,
         )
     split_file.unlink()
-
