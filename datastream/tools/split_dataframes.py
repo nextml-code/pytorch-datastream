@@ -42,6 +42,9 @@ def split_dataframes(
             for split_name in proportions.keys()
         }
 
+    if len(dataframe[key_column].unique()) != len(dataframe):
+        raise KeyError(f'key_column {key_column} contains duplicate values')
+
     if frozen:
         if sum(map(len, split.values())) == 0:
             raise ValueError('Frozen split is empty')
@@ -51,34 +54,31 @@ def split_dataframes(
                 'Frozen split requires that the dataframe contains the entire',
                 'saved splits',
             ]))
+    else:
+        split_proportions = tuple(proportions.items())
 
-    if len(dataframe[key_column].unique()) != len(dataframe):
-        raise KeyError(f'key_column {key_column} does not have unique values')
-
-    split_proportions = tuple(proportions.items())
-
-    for split_name, proportion in split_proportions[:-1]:
-        if stratify_column is None:
-            split = split_proportion(
-                dataframe[key_column],
-                proportion,
-                split_name,
-                split,
-            )
-        else:
-            for strata in stratas(dataframe, stratify_column):
+        for split_name, proportion in split_proportions[:-1]:
+            if stratify_column is None:
                 split = split_proportion(
-                    strata[key_column],
+                    dataframe[key_column],
                     proportion,
                     split_name,
                     split,
                 )
+            else:
+                for strata in stratas(dataframe, stratify_column):
+                    split = split_proportion(
+                        strata[key_column],
+                        proportion,
+                        split_name,
+                        split,
+                    )
 
-    last_split_name, _ = split_proportions[-1]
-    split[last_split_name] += unassigned(dataframe[key_column], split)
+        last_split_name, _ = split_proportions[-1]
+        split[last_split_name] += unassigned(dataframe[key_column], split)
 
-    if filepath is not None:
-        filepath.write_text(json.dumps(split))
+        if filepath is not None:
+            filepath.write_text(json.dumps(split))
 
     return {
         split_name: (
