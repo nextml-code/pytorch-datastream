@@ -182,12 +182,13 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
         stratify_column: Optional[str] = None,
         filepath: Optional[Union[str, Path]] = None,
         frozen: Optional[bool] = False,
-        # TODO: allow seed, if there will be no new data then this can be nice
-        # seed: Optional[int] = None,
+        seed: Optional[int] = None,
     ) -> Dict[str, Dataset[A]]:
         '''
         Split dataset into multiple parts. Optionally you can chose to stratify
         on a column in the source dataframe or save the split to a json file.
+        If you are sure that the split strategy will not change then you can
+        safely use a seed instead of a filepath.
 
         Saved splits can continue from the old split and handles:
         
@@ -220,13 +221,18 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
         if filepath is not None:
             filepath = Path(filepath)
 
+        if seed is None:
+            split_dataframes = tools.split_dataframes
+        else:
+            split_dataframes = tools.numpy_seed(seed)(tools.split_dataframes)
+
         return {
             split_name: Dataset(
                 dataframe=dataframe,
                 length=len(dataframe),
                 functions=self.functions,
             )
-            for split_name, dataframe in tools.split_dataframes(
+            for split_name, dataframe in split_dataframes(
                 self.dataframe,
                 key_column,
                 proportions,
@@ -469,9 +475,24 @@ def test_split_dataset():
         key_column='index',
         proportions=proportions,
         stratify_column='stratify',
+        seed=100,
+    )
+    split_datasets4 = dataset.split(
+        key_column='index',
+        proportions=proportions,
+        stratify_column='stratify',
+        seed=100,
+    )
+    split_datasets5 = dataset.split(
+        key_column='index',
+        proportions=proportions,
+        stratify_column='stratify',
+        seed=800,
     )
 
     split_file.unlink()
 
     assert split_datasets1 == split_datasets2
     assert split_datasets1 != split_datasets3
+    assert split_datasets3 == split_datasets4
+    assert split_datasets3 != split_datasets5
