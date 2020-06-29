@@ -48,12 +48,6 @@ def split_dataframes(
     if frozen:
         if sum(map(len, split.values())) == 0:
             raise ValueError('Frozen split is empty')
-
-        if not set(sum(split.values(), list())) <= set(dataframe[key_column]):
-            raise ValueError(' '.join([
-                'Frozen split requires that the dataframe contains the entire',
-                'saved splits',
-            ]))
     else:
         split_proportions = tuple(proportions.items())
 
@@ -289,14 +283,4 @@ def test_frozen():
         filepath=split_file,
         stratify_column='stratify',
     )
-
-    with raises(ValueError):
-        split_dataframes(
-            dataframe.iloc[:-2],
-            key_column='index',
-            proportions=dict(train=0.8, test=0.2),
-            filepath=split_file,
-            stratify_column='stratify',
-            frozen=True,
-        )
     split_file.unlink()
