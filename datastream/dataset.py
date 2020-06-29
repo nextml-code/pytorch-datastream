@@ -179,8 +179,9 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
         self,
         key_column: str,
         proportions: Dict[str, float],
-        filepath: Optional[Union[str, Path]] = None,
         stratify_column: Optional[str] = None,
+        filepath: Optional[Union[str, Path]] = None,
+        frozen: Optional[bool] = False,
         # TODO: allow seed, if there will be no new data then this can be nice
         # seed: Optional[int] = None,
     ) -> Dict[str, Dataset[A]]:
@@ -194,7 +195,6 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
         * Changing test size
         * Adapt after removing examples from dataset
         * Adapt to new stratification
-
 
         >>> split_file = Path('doctest_split_dataset.json')
         >>> split_datasets = (
@@ -230,8 +230,9 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[A]):
                 self.dataframe,
                 key_column,
                 proportions,
-                filepath,
                 stratify_column,
+                filepath,
+                frozen,
             ).items()
         }
 
