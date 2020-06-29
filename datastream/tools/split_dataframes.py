@@ -10,8 +10,9 @@ def split_dataframes(
     dataframe: pd.DataFrame,
     key_column: str,
     proportions: Dict[str, float],
-    filepath: Optional[Path] = None,
     stratify_column: Optional[str] = None,
+    filepath: Optional[Path] = None,
+    frozen: Optional[bool] = False,
 ):
     '''
     Split and save result. Add new examples and continue from the old split.
@@ -40,6 +41,18 @@ def split_dataframes(
             split_name: list()
             for split_name in proportions.keys()
         }
+
+    if (
+        frozen
+        and set(sum(split.values(), list())) != set(dataframe[key_column])
+    ):
+        raise ValueError(' '.join([
+            'Frozen split requires the dataframe and saved split to contain',
+            'the same keys',
+        ]))
+
+    if len(dataframe[key_column].unique()) != len(dataframe):
+        raise KeyError(f'key_column {key_column} does not have unique values')
 
     split_proportions = tuple(proportions.items())
 
@@ -252,3 +265,38 @@ def test_changed_split_names():
             stratify_column='stratify',
         )
     split_file.unlink()
+
+
+def test_frozen():
+    from pytest import raises
+
+    dataframe = mock_dataframe()
+
+    with raises(ValueError):
+        split_dataframes(
+            dataframe,
+            key_column='index',
+            proportions=dict(train=0.8, test=0.2),
+            frozen=True,
+        )
+
+    split_file = Path('test_frozen.json')
+    split_dataframes(
+        dataframe,
+        key_column='index',
+        proportions=dict(train=0.8, test=0.2),
+        filepath=split_file,
+        stratify_column='stratify',
+    )
+
+    with raises(ValueError):
+        split_dataframes(
+            dataframe.iloc[:-2],
+            key_column='index',
+            proportions=dict(train=0.8, test=0.2),
+            filepath=split_file,
+            stratify_column='stratify',
+            frozen=True,
+        )
+    split_file.unlink()
+
