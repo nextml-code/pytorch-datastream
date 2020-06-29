@@ -43,7 +43,7 @@ def split_dataframes(
         }
 
     if len(dataframe[key_column].unique()) != len(dataframe):
-        raise KeyError(f'key_column {key_column} contains duplicate values')
+        raise ValueError(f'key_column {key_column} contains duplicate values')
 
     if frozen:
         if sum(map(len, split.values())) == 0:
