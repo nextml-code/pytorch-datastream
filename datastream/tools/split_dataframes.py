@@ -72,7 +72,8 @@ def split_dataframes(
         split[last_split_name] += unassigned(dataframe[key_column], split)
 
         if filepath is not None:
-            filepath.write_text(json.dumps(split))
+            filepath.parent.mkdir(parents=True, exist_ok=True)
+            filepath.write_text(json.dumps(split, indent=4))
 
     return {
         split_name: (

@@ -206,17 +206,12 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
         ...     )))
         ...     .split(
         ...         key_column='index',
-        ...         proportions=dict(
-        ...             train=0.7,
-        ...             early_stopping=0.1,
-        ...             public_test=0.1,
-        ...             private_test=0.1,
-        ...         ),
+        ...         proportions=dict(train=0.8, test=0.2),
         ...         filepath=split_file,
         ...     )
         ... )
         >>> len(split_datasets['train'])
-        70
+        80
         >>> split_file.unlink()  # clean up after doctest
         '''
         if filepath is not None:
