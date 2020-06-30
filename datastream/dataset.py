@@ -65,18 +65,17 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
     def from_subscriptable(subscriptable) -> Dataset:
         '''
         Create ``Dataset`` based on subscriptable i.e. implements
-        ``__get_item__``. Should only be used for simple examples as a
-        ``Dataset`` created with this method does not support methods that
-        require a source dataframe (i.e. :func:`Dataset.split` and
-        :func:`Dataset.subset`)
+        ``__getitem__`` and ``__len__``. Should only be used for simple
+        examples as a ``Dataset`` created with this method does not support
+        methods that require a source dataframe (i.e. :func:``Dataset.split`` 
+        and :func:``Dataset.subset``)
         '''
+
         return (
             Dataset.from_dataframe(
-                pd.DataFrame(dict(
-                    example=subscriptable
-                ))
+                pd.DataFrame(dict(index=range(len(subscriptable))))
             )
-            .map(lambda row: row['example'])
+            .map(lambda row: subscriptable[row['index']])
         )
 
     @staticmethod
