@@ -67,8 +67,8 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
         Create ``Dataset`` based on subscriptable i.e. implements
         ``__get_item__``. Should only be used for simple examples as a
         ``Dataset`` created with this method does not support methods that
-        require a source dataframe (i.e. ``Dataset.split`` and
-        ``Dataset.subset``)
+        require a source dataframe (i.e. :func:`Dataset.split` and
+        :func:`Dataset.subset`)
         '''
         return (
             Dataset.from_dataframe(
@@ -284,7 +284,7 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
     def concat(datasets: List[Dataset]) -> Dataset[R]:
         '''
         Concatenate multiple datasets together so that they behave like a
-        single dataset. Consider using ``Datastream.merge`` if you have
+        single dataset. Consider using :func:`Datastream.merge` if you have
         multiple data sources.
         '''
         from_concat_mapping = Dataset.create_from_concat_mapping(datasets)
