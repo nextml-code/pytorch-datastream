@@ -4,8 +4,6 @@ from typing import (
     Tuple, Callable, Any, Union, List, TypeVar, Generic, Dict, Optional
 )
 from pathlib import Path
-from functools import partial
-from itertools import repeat, chain
 import numpy as np
 import pandas as pd
 import torch
@@ -15,9 +13,10 @@ from datastream import tools
 T = TypeVar('T')
 R = TypeVar('R')
 
+
 class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
     '''
-    A ``Dataset[T]`` is a mapping that allows pipelining of functions in a 
+    A ``Dataset[T]`` is a mapping that allows pipelining of functions in a
     readable syntax returning an item of type ``T``.
 
         >>> from datastream import Dataset
@@ -67,8 +66,8 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
         Create ``Dataset`` based on subscriptable i.e. implements
         ``__getitem__`` and ``__len__``. Should only be used for simple
         examples as a ``Dataset`` created with this method does not support
-        methods that require a source dataframe (i.e. :func:``Dataset.split`` 
-        and :func:``Dataset.subset``)
+        methods that require a source dataframe (i.e. :func:`Dataset.split`
+        and :func:`Dataset.subset`)
         '''
 
         return (
@@ -138,7 +137,7 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
     def subset(
         self, mask_fn: Callable[
             [pd.DataFrame], Union[pd.Series, np.array, List[bool]]
-        ]  
+        ]
     ) -> Dataset[T]:
         '''
         Select a subset of the dataset using a function that receives the
@@ -191,7 +190,7 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
         safely use a seed instead of a filepath.
 
         Saved splits can continue from the old split and handles:
-        
+
         * New examples
         * Changing test size
         * Adapt after removing examples from dataset
@@ -441,7 +440,7 @@ def test_combine_dataset():
         )
         for index, inner_indices in enumerate(indices)
     )
-   
+
 
 def test_split_dataset():
     dataset = Dataset.from_dataframe(pd.DataFrame(dict(
