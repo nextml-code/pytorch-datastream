@@ -52,32 +52,30 @@ a more extensive list on API and usage.
         .multi_sample
         .sample_proportion
 
-Dataset from subscriptable
---------------------------
+Construct informative batches
+-----------------------------
+
+>>> datastream = Datastream.merge([
+...     (apple_datastream, 2),
+...     (pear_datastream, 1),
+...     (banana_datastream, 1),
+... ])
+... next(iter(datastream.data_loader(batch_size=6)))
+['apple', 'apple', 'pear', 'banana', 'apple', 'apple']
+
+
+Zip independently sampled datastreams
+-------------------------------------
 
 .. code-block:: python
 
-    from datastream import Dataset
+    datastream = Datastream.zip([
+        apple_datastream,
+        Datastream.merge([pear_datastream, banana_datastream])
+    ])
 
-    fruits_and_cost = (
-        ('apple', 5),
-        ('pear', 7),
-        ('banana', 14),
-        ('kiwi', 100),
-    )
-
-    dataset = (
-        Dataset.from_subscriptable(fruits_and_cost)
-        .map(lambda fruit, cost: (
-            fruit,
-            cost * 2,
-        ))
-    )
-
-    print(dataset[2]) # ('banana', 28)
-
-Dataset from pandas dataframe
------------------------------
+Pipeline functions
+------------------
 
 .. code-block:: python
 
