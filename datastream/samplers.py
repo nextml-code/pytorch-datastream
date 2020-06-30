@@ -364,7 +364,7 @@ class RepeatSampler(BaseModel, torch.utils.data.Sampler):
 
     def sample_proportion(self, proportion):
         return RepeatSampler(
-            sampler.sample_proportion(proportion),
+            self.sampler.sample_proportion(proportion),
             self.length,
             self.epoch_bound,
         )
