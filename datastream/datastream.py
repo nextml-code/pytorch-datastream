@@ -33,7 +33,8 @@ class Datastream(BaseModel, Generic[T]):
     ``Datastream[T]`` combines a ``Dataset[T]`` and a sampler into a stream of
     examples. By default the samples are drawn without replacement until the
     full dataset is exhausted. The proportion of the dataset that should be
-    drawn before allowing replacement can be changed with ``.sample_proportion``.
+    drawn before allowing replacement can be changed with
+    :func:`Datastream.sample_proportion`.
 
         >>> from datastream import Dataset, Datastream
         >>> data_loader = (
@@ -176,7 +177,7 @@ class Datastream(BaseModel, Generic[T]):
         proportion: float,
     ) -> Datastream[T]:
         '''
-        Create new ``Datastream`` with changed proportion. This changes the
+        Create new ``Datastream[T]`` with changed proportion. This changes the
         numbers of drawn samples before restarting sampling with new weights
         and allowing sample replacement.
 
@@ -195,7 +196,7 @@ class Datastream(BaseModel, Generic[T]):
         return dict(sampler=self.sampler.state_dict())
 
     def load_state_dict(self, state_dict: Dict):
-        '''Load saved state from ``Datastream.state_dict``.'''
+        '''Load saved state from :func:`Datastream.state_dict`.'''
         return self.sampler.load_state_dict(state_dict['sampler'])
 
     def multi_sample(self: Datastream[T], n: int) -> Datastream[T]:
