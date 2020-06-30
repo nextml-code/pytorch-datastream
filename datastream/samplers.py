@@ -1,13 +1,10 @@
 from __future__ import annotations
 from pydantic import BaseModel
-from typing import Tuple, Dict, Callable, Any, Optional, Iterable
+from typing import Tuple, Callable, Iterable
 from functools import partial
-from itertools import repeat, chain, islice
-from collections import namedtuple
-import numpy as np
-import pandas as pd
+from itertools import chain
 import torch
-from datastream.tools import starcompose, star, repeat_map_chain
+from datastream.tools import starcompose, repeat_map_chain
 from datastream import Dataset
 
 
@@ -47,7 +44,7 @@ class StandardSampler(BaseModel, torch.utils.data.Sampler):
 
     def update_weights_(self, function):
         self.sampler.weights[:] = function(self.sampler.weights)
-        
+
     def update_example_weight_(self, weight, index):
         if hasattr(weight, 'item'):
             weight = weight.item()
@@ -213,7 +210,9 @@ class ZipSampler(BaseModel, torch.utils.data.Sampler):
 
     def update_example_weight_(self, weights, index):
         inner_indices = self.from_mapping(index)
-        for sampler, weight, inner_index in zip(self.samplers, weights, inner_indices):
+        for sampler, weight, inner_index in zip(
+            self.samplers, weights, inner_indices
+        ):
             sampler.update_example_weight_(
                 weight, inner_index
             )
@@ -316,7 +315,6 @@ class MultiSampler(BaseModel, torch.utils.data.Sampler):
     def load_state_dict(self, state_dict):
         for sampler, state_dict in zip(self.samplers, state_dict['samplers']):
             sampler.load_state_dict(state_dict)
-
 
 
 class RepeatSampler(BaseModel, torch.utils.data.Sampler):

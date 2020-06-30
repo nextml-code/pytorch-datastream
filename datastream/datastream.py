@@ -5,9 +5,7 @@ from typing import (
     Dict,
     List,
     Callable,
-    Any,
     Optional,
-    Iterable,
     TypeVar,
     Generic,
     Union,
@@ -27,6 +25,7 @@ from datastream.samplers import (
 
 T = TypeVar('T')
 R = TypeVar('R')
+
 
 class Datastream(BaseModel, Generic[T]):
     '''
@@ -294,7 +293,9 @@ def test_datastream_merge_zip_merge():
             (ZippedMergedDatastream(), 5),
         ])
 
-        it = iter(datastream.data_loader(batch_size=16, n_batches_per_epoch=10))
+        it = iter(datastream.data_loader(
+            batch_size=16, n_batches_per_epoch=10
+        ))
         for _ in range(10):
             print(next(it))
 
