@@ -30,7 +30,7 @@ R = TypeVar('R')
 
 class Datastream(BaseModel, Generic[T]):
     '''
-    ``Datastream`` combines a ``Dataset`` and a sampler into a stream of
+    ``Datastream[T]`` combines a ``Dataset[T]`` and a sampler into a stream of
     examples. By default the samples are drawn without replacement until the
     full dataset is exhausted. The proportion of the dataset that should be
     drawn before allowing replacement can be changed with ``.sample_proportion``.
@@ -119,9 +119,9 @@ class Datastream(BaseModel, Generic[T]):
     def map(
         self: Datastream[T], function: Callable[Union[[T], [...]], R]
     ) -> Datastream[R]:
-        '''
-        Creates a new Datastream with a new mapped dataset. See ``Dataset.map``
-        for details.
+        ''' 
+        Creates a new Datastream with a new mapped dataset. See
+        :func:`Dataset.map` for details.
         '''
         return Datastream(
             self.dataset.map(function),
