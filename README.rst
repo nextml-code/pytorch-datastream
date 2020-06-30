@@ -52,75 +52,36 @@ a more extensive list on API and usage.
         .multi_sample
         .sample_proportion
 
-Construct informative batches
------------------------------
+Merge / stratify / oversample datastreams
+-----------------------------------------
+The fruit datastreams given below repeatedly yields the string of its fruit
+type.
 
->>> datastream = Datastream.merge([
-...     (apple_datastream, 2),
-...     (pear_datastream, 1),
-...     (banana_datastream, 1),
-... ])
-... next(iter(datastream.data_loader(batch_size=6)))
-['apple', 'apple', 'pear', 'banana', 'apple', 'apple']
+.. code-block:: python
 
+    >>> datastream = Datastream.merge([
+    ...     (apple_datastream, 2),
+    ...     (pear_datastream, 1),
+    ...     (banana_datastream, 1),
+    ... ])
+    >>> next(iter(datastream.data_loader(batch_size=8)))
+    ['apple', 'apple', 'pear', 'banana', 'apple', 'apple', 'pear', 'banana']
 
 Zip independently sampled datastreams
 -------------------------------------
+The fruit datastreams given below repeatedly yields the string of its fruit
+type.
 
 .. code-block:: python
 
-    datastream = Datastream.zip([
-        apple_datastream,
-        Datastream.merge([pear_datastream, banana_datastream])
-    ])
-
-Pipeline functions
-------------------
-
-.. code-block:: python
-
-    from PIL import Image
-    from imgaug import augmenters as iaa
-    from datastream import Dataset
-
-    augmenter = iaa.Sequential([...])
-
-    def preprocess(image, class_names):
-        ...
-
-    dataset = (
-        Dataset.from_dataframe(df)
-        .map(lambda row: (
-            row['image_path'],
-            row['class_names'],
-        ))
-        .map(lambda image_path, class_names: (
-            Image.open(image_path),
-            class_names,
-        ))
-        .map(lambda image, class_names: (
-            augmenter.augment(image=image),
-            class_names,
-        ))
-        .map(preprocess)
-    )
-
-Datastream to pytorch data loader
----------------------------------
-
-.. code-block:: python
-
-    data_loader = (
-        Datastream(dataset)
-        .data_loader(
-            batch_size=32,
-            num_workers=8,
-            n_batches_per_epoch=100,
-        )
-    )
+    >>> datastream = Datastream.zip([
+    ...     apple_datastream,
+    ...     Datastream.merge([pear_datastream, banana_datastream]),
+    ... ])
+    >>> next(iter(datastream.data_loader(batch_size=4)))
+    [('apple', 'pear'), ('apple', 'banana'), ('apple', 'pear'), ('apple', 'banana')]
 
 More usage examples
 -------------------
-
 See the `documentation <https://pytorch-datastream.readthedocs.io/en/latest/>`_
-for examples with oversampling / stratification and weighted sampling.
+for more usage examples.
