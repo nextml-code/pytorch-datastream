@@ -271,7 +271,7 @@ def test_datastream_zip():
 
 def test_datastream_merge_zip_merge():
     '''
-    repeating because it only sometimes recreated an error that occured
+    Repeating because it only sometimes recreated an error that occured
     when using mixup/mixmatch
     '''
 

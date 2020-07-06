@@ -37,7 +37,7 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
         ('banana', 28)
     '''
 
-    dataframe: pd.DataFrame
+    dataframe: Optional[pd.DataFrame]
     length: int
     functions: Tuple[Callable[..., Any], ...]
     composed_fn: Callable[[pd.DataFrame, int], T]
@@ -331,14 +331,16 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
         Zip multiple datasets together so that all combinations of examples
         are possible (i.e. the product) creating tuples like
         ``(example1, example2, ...)``.
+    
+        The created dataset will not have a dataframe because combined
+        datasets are often very long and it is expensive to enumerate them.
         '''
         from_combine_mapping = Dataset.create_from_combine_mapping(datasets)
-
         return Dataset(
-            dataframe=pd.DataFrame(dict(dataset_index=range(len(datasets)))),
+            dataframe=None,
             length=np.prod(list(map(len, datasets))),
             functions=(
-                lambda index_dataframe, index: from_combine_mapping(index),
+                lambda _, index: from_combine_mapping(index),
                 lambda *indices: tuple([
                     dataset[index] for dataset, index in zip(datasets, indices)
                 ]),
@@ -353,13 +355,31 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
 
         The length of the created dataset is the minimum length of the zipped
         datasets.
+
+        The created dataset's dataframe is a the concatenation of the input
+        datasets' dataframes. It is concatenated over columns with an added
+        multiindex column like this:
+        ``pd.concat(dataframes, axis=1, keys=['dataset0', 'dataset1', ...])``
         '''
-        return Dataset(
-            dataframe=pd.DataFrame(dict(dataset_index=range(len(datasets)))),
-            length=min(map(len, datasets)),
-            functions=tuple([lambda index_dataframe, index: tuple(
+        length = min(map(len, datasets))
+        return (
+            Dataset.from_dataframe(
+                pd.concat(
+                    [
+                        dataset.dataframe.iloc[:length].reset_index()
+                        for dataset in datasets
+                    ],
+                    axis=1,
+                    keys=[
+                        f'dataset{dataset_index}'
+                        for dataset_index in range(len(datasets))
+                    ],
+                ).assign(_index=list(range(length)))
+            )
+            .map(lambda row: row['_index'].iloc[0])
+            .map(lambda index: tuple(
                 dataset[index] for dataset in datasets
-            )]),
+            ))
         )
 
 
@@ -419,6 +439,12 @@ def test_zip_dataset():
     ])
 
     assert dataset[3] == (3, 3)
+
+    for x, y in zip(
+        dataset.subset(lambda df: np.arange(len(df)) <= 2),
+        dataset,
+    ):
+        assert x == y
 
 
 def test_combine_dataset():
