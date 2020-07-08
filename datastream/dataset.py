@@ -28,7 +28,7 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
         ... )
         >>> dataset = (
         ...     Dataset.from_subscriptable(fruit_and_cost)
-        ...     .map(lambda fruit, cost: (
+        ...     .starmap(lambda fruit, cost: (
         ...         fruit,
         ...         cost * 2,
         ...     ))
@@ -39,26 +39,11 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
 
     dataframe: Optional[pd.DataFrame]
     length: int
-    functions: Tuple[Callable[..., Any], ...]
-    composed_fn: Callable[[pd.DataFrame, int], T]
+    get_item: Callable[[pd.DataFrame, int], T]
 
     class Config:
         arbitrary_types_allowed = True
         allow_mutation = False
-
-    def __init__(
-        self,
-        dataframe: pd.DataFrame,
-        length: int,
-        functions: Tuple[Callable[..., Any], ...],
-    ):
-        BaseModel.__init__(
-            self,
-            dataframe=dataframe,
-            length=length,
-            functions=functions,
-            composed_fn=tools.starcompose(*functions),
-        )
 
     @staticmethod
     def from_subscriptable(subscriptable) -> Dataset:
@@ -83,11 +68,11 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
         return Dataset(
             dataframe=dataframe,
             length=len(dataframe),
-            functions=tuple([lambda df, index: df.iloc[index]]),
+            get_item=lambda df, index: df.iloc[index],
         )
 
     def __getitem__(self: Dataset[T], index: int) -> T:
-        return self.composed_fn(self.dataframe, index)
+        return self.get_item(self.dataframe, index)
 
     def __len__(self):
         return self.length
@@ -115,24 +100,41 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
         return True
 
     def map(
-        self: Dataset[T], function: Callable[Union[[T], [...]], R]
+        self: Dataset[T], function: Callable[[T], R]
     ) -> Dataset[R]:
         '''
         Creates a new dataset with the function added to the dataset pipeline.
-        Returned tuples are expanded as \\*args for the next mapped function.
 
         >>> (
         ...     Dataset.from_subscriptable([1, 2, 3])
-        ...     .map(lambda number: (number, number + 1))
-        ...     .map(lambda number, plus_one: number + plus_one)
+        ...     .map(lambda number: number + 1)
         ... )[-1]
-        7
+        4
         '''
         return Dataset(
             dataframe=self.dataframe,
             length=self.length,
-            functions=self.functions + tuple([function]),
+            get_item=lambda dataframe, index: function(
+                self.get_item(dataframe, index)
+            ),
         )
+
+    def starmap(
+        self: Dataset[T], function: Callable[Union[..., R]]
+    ) -> Dataset[R]:
+        '''
+        Creates a new dataset with the function added to the dataset pipeline.
+        The functions expects iterables that are expanded as \\*args for the
+        mapped function.
+
+        >>> (
+        ...     Dataset.from_subscriptable([1, 2, 3])
+        ...     .map(lambda number: (number, number + 1))
+        ...     .starmap(lambda number, plus_one: number + plus_one)
+        ... )[-1]
+        7
+        '''
+        return self.map(tools.star(function))
 
     def subset(
         self, mask_fn: Callable[
@@ -171,7 +173,7 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
         return Dataset(
             dataframe=self.dataframe.iloc[indices],
             length=len(indices),
-            functions=self.functions,
+            get_item=self.get_item,
         )
 
     def split(
@@ -224,7 +226,7 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
             split_name: Dataset(
                 dataframe=dataframe,
                 length=len(dataframe),
-                functions=self.functions,
+                get_item=self.get_item,
             )
             for split_name, dataframe in split_dataframes(
                 self.dataframe,
@@ -241,14 +243,13 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
         Zip the output with its index. The output of the pipeline will be
         a tuple ``(output, index)``.
         '''
-        composed_fn = self.composed_fn
         return Dataset(
             dataframe=self.dataframe,
             length=self.length,
-            functions=tuple([lambda dataframe, index: (
-                composed_fn(dataframe, index),
+            get_item=lambda dataframe, index: (
+                self.get_item(dataframe, index),
                 index,
-            )]),
+            ),
         )
 
     @staticmethod
@@ -287,15 +288,14 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
         '''
         from_concat_mapping = Dataset.create_from_concat_mapping(datasets)
 
+        def get_item(dataframe, index):
+            dataset_index, inner_index = from_concat_mapping(index)
+            return datasets[dataset_index][inner_index]
+
         return Dataset(
-            dataframe=pd.DataFrame(dict(dataset_index=range(len(datasets)))),
+            dataframe=None, # TODO: concat dataframes?
             length=sum(map(len, datasets)),
-            functions=(
-                lambda index_dataframe, index: from_concat_mapping(index),
-                lambda dataset_index, inner_index: (
-                    datasets[dataset_index][inner_index]
-                ),
-            ),
+            get_item=get_item,
         )
 
     @staticmethod
@@ -336,15 +336,17 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
         datasets are often very long and it is expensive to enumerate them.
         '''
         from_combine_mapping = Dataset.create_from_combine_mapping(datasets)
+
+        def get_item(dataframe, index):
+            indices = from_combine_mapping(index)
+            return tuple([
+                dataset[index] for dataset, index in zip(datasets, indices)
+            ])
+
         return Dataset(
             dataframe=None,
             length=np.prod(list(map(len, datasets))),
-            functions=(
-                lambda _, index: from_combine_mapping(index),
-                lambda *indices: tuple([
-                    dataset[index] for dataset, index in zip(datasets, indices)
-                ]),
-            ),
+            get_item=get_item,
         )
 
     @staticmethod
