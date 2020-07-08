@@ -117,7 +117,7 @@ class Datastream(BaseModel, Generic[T]):
         )
 
     def map(
-        self: Datastream[T], function: Callable[Union[[T], [...]], R]
+        self: Datastream[T], function: Callable[[T], R]
     ) -> Datastream[R]:
         ''' 
         Creates a new Datastream with a new mapped dataset. See
@@ -125,6 +125,18 @@ class Datastream(BaseModel, Generic[T]):
         '''
         return Datastream(
             self.dataset.map(function),
+            self.sampler,
+        )
+
+    def starmap(
+        self: Datastream[T], function: Callable[[...], R]
+    ) -> Datastream[R]:
+        ''' 
+        Creates a new Datastream with a new starmapped dataset. See
+        :func:`Dataset.starmap` for details.
+        '''
+        return Datastream(
+            self.dataset.starmap(function),
             self.sampler,
         )
 
@@ -306,7 +318,7 @@ def test_datastream_simple_weights():
     datastream = (
         Datastream(dataset)
         .zip_index()
-        .map(lambda integer, index: dict(
+        .starmap(lambda integer, index: dict(
             integer=integer,
             index=index,
         ))
@@ -342,7 +354,7 @@ def test_merge_datastream_weights():
             for dataset in datasets
         ])
         .zip_index()
-        .map(lambda integer, index: dict(
+        .starmap(lambda integer, index: dict(
             integer=integer,
             index=index,
         ))
@@ -371,7 +383,7 @@ def test_multi_sample():
         .multi_sample(n_multi_sample)
         .sample_proportion(0.5)
         .zip_index()
-        .map(lambda number, index: (number ** 0.5, index))
+        .starmap(lambda number, index: (number ** 0.5, index))
     )
 
     output = [
