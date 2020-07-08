@@ -17,7 +17,7 @@ R = TypeVar('R')
 class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
     '''
     A ``Dataset[T]`` is a mapping that allows pipelining of functions in a
-    readable syntax returning an item of type ``T``.
+    readable syntax returning an example of type ``T``.
 
         >>> from datastream import Dataset
         >>> fruit_and_cost = (
@@ -64,7 +64,20 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
 
     @staticmethod
     def from_dataframe(dataframe: pd.DataFrame) -> Dataset[pd.Series]:
-        '''Create ``Dataset`` based on ``pandas.DataFrame``.'''
+        '''
+        Create ``Dataset`` based on ``pandas.DataFrame``.
+        :func:`Dataset.__getitem__` will return a row from the dataframe and
+        :func:`Dataset.map` should be given a function that takes a row from
+        the dataframe as input.
+
+        >>> (
+        ...     Dataset.from_dataframe(pd.DataFrame(dict(
+        ...        number=[1, 2, 3]
+        ...     )))
+        ...     .map(lambda row: row['number'] + 1)
+        ... )[-1]
+        4
+        '''
         return Dataset(
             dataframe=dataframe,
             length=len(dataframe),
@@ -72,6 +85,7 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
         )
 
     def __getitem__(self: Dataset[T], index: int) -> T:
+        '''Get an example ``T`` from the ``Dataset[T]``'''
         return self.get_item(self.dataframe, index)
 
     def __len__(self):
@@ -124,8 +138,8 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
     ) -> Dataset[R]:
         '''
         Creates a new dataset with the function added to the dataset pipeline.
-        The functions expects iterables that are expanded as \\*args for the
-        mapped function.
+        The dataset's pipeline should return an iterable that will be
+        expanded as \\*args to the mapped function.
 
         >>> (
         ...     Dataset.from_subscriptable([1, 2, 3])
@@ -145,12 +159,15 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
         Select a subset of the dataset using a function that receives the
         source dataframe as input and is expected to return a boolean mask.
 
+        Note that this function can still be called after multiple operations
+        such as mapping functions as it uses the source dataframe.
+
         >>> (
         ...     Dataset.from_dataframe(pd.DataFrame(dict(
         ...        number=[1, 2, 3]
         ...     )))
-        ...     .subset(lambda df: df['number'] <= 2)
         ...     .map(lambda row: row['number'])
+        ...     .subset(lambda dataframe: dataframe['number'] <= 2)
         ... )[-1]
         2
         '''
@@ -198,21 +215,22 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
         * Adapt after removing examples from dataset
         * Adapt to new stratification
 
-        >>> split_file = Path('doctest_split_dataset.json')
         >>> split_datasets = (
         ...     Dataset.from_dataframe(pd.DataFrame(dict(
         ...         index=np.arange(100),
-        ...         number=np.random.randn(100),
+        ...         number=np.arange(100),
         ...     )))
+        ...     .map(lambda row: row['number'])
         ...     .split(
         ...         key_column='index',
         ...         proportions=dict(train=0.8, test=0.2),
-        ...         filepath=split_file,
+        ...         seed=700,
         ...     )
         ... )
         >>> len(split_datasets['train'])
         80
-        >>> split_file.unlink()  # clean up after doctest
+        >>> split_datasets['test'][0]
+        3
         '''
         if filepath is not None:
             filepath = Path(filepath)
@@ -242,6 +260,12 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
         '''
         Zip the output with its index. The output of the pipeline will be
         a tuple ``(output, index)``.
+
+        >>> (
+        ...     Dataset.from_subscriptable([4, 5, 6])
+        ...     .zip_index()
+        ... )[0]
+        (4, 0)
         '''
         return Dataset(
             dataframe=self.dataframe,
@@ -362,6 +386,12 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
         datasets' dataframes. It is concatenated over columns with an added
         multiindex column like this:
         ``pd.concat(dataframes, axis=1, keys=['dataset0', 'dataset1', ...])``
+
+        >>> Dataset.zip([
+        ...     Dataset.from_subscriptable([1, 2, 3]),
+        ...     Dataset.from_subscriptable([4, 5, 6, 7]),
+        ... ])[-1]
+        (3, 6)
         '''
         length = min(map(len, datasets))
         return (

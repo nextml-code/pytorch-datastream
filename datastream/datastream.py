@@ -35,13 +35,12 @@ class Datastream(BaseModel, Generic[T]):
     drawn before allowing replacement can be changed with
     :func:`Datastream.sample_proportion`.
 
-        >>> from datastream import Dataset, Datastream
-        >>> data_loader = (
-        ...     Datastream(Dataset.from_subscriptable([1, 2, 3]))
-        ...     .data_loader(batch_size=16, n_batches_per_epoch=100)
-        ... )
-        >>> len(next(iter(data_loader)))
-        16
+    >>> data_loader = (
+    ...     Datastream(Dataset.from_subscriptable([1, 2, 3]))
+    ...     .data_loader(batch_size=16, n_batches_per_epoch=100)
+    ... )
+    >>> len(next(iter(data_loader)))
+    16
     '''
 
     dataset: Dataset[T]
@@ -145,7 +144,16 @@ class Datastream(BaseModel, Generic[T]):
         n_batches_per_epoch: int = None,
         **kwargs
     ) -> torch.utils.data.DataLoader:
-        '''Get ``torch.utils.data.DataLoader`` for use in pytorch pipeline.'''
+        '''
+        Get ``torch.utils.data.DataLoader`` for use in pytorch pipeline.
+
+        >>> data_loader = (
+        ...     Datastream(Dataset.from_subscriptable([5, 5, 5]))
+        ...     .data_loader(batch_size=5, n_batches_per_epoch=10)
+        ... )
+        >>> list(data_loader)[0]
+        tensor([5, 5, 5, 5, 5])
+        '''
         if n_batches_per_epoch is None:
             sampler = self.sampler
         else:
@@ -163,8 +171,10 @@ class Datastream(BaseModel, Generic[T]):
         Zip the output with its underlying `Dataset` index. The output of the
         pipeline will be a tuple ``(output, index)``
 
-        This method is used when you want modify your sample weights during
-        training.
+        This method is useful when you want modify your sample weights during
+        training since that requires the index of the example.
+
+        See :func:`Dataset.zip_index` for more details.
         '''
         return Datastream(
             self.dataset.zip_index(),
@@ -203,7 +213,7 @@ class Datastream(BaseModel, Generic[T]):
         )
 
     def state_dict(self) -> Dict:
-        '''Get state of datastream. Useful for checkpointing.'''
+        '''Get state of datastream. Useful for checkpointing sample weights.'''
         return dict(sampler=self.sampler.state_dict())
 
     def load_state_dict(self, state_dict: Dict):
