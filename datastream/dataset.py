@@ -4,6 +4,7 @@ from typing import (
     Tuple, Callable, Any, Union, List, TypeVar, Generic, Dict, Optional
 )
 from pathlib import Path
+import inspect
 import numpy as np
 import pandas as pd
 import torch
@@ -125,12 +126,30 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
         ... )[-1]
         4
         '''
+
+        def composed_fn(dataframe, index):
+            item = self.get_item(dataframe, index)
+            try:
+                return function(item)
+            except Exception as e:
+                item_text = str(item)
+                if len(item_text) > 79:
+                    item_text = item_text[:79] + ' ...'
+
+                raise Exception('\n'.join([
+                    repr(e),
+                    'Above exception occured in the pipeline for',
+                    'item:',
+                    item_text,
+                    f'file: {inspect.getfile(function)}',
+                    'source:',
+                    inspect.getsource(function),
+                ])) from e
+
         return Dataset(
             dataframe=self.dataframe,
             length=self.length,
-            get_item=lambda dataframe, index: function(
-                self.get_item(dataframe, index)
-            ),
+            get_item=composed_fn,
         )
 
     def starmap(
