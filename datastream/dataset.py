@@ -141,7 +141,7 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
                     'Above exception occured in the pipeline for',
                     'item:',
                     item_text,
-                    f'file: {inspect.getfile(function)}',
+                    f'module: {inspect.getmodule(function)}',
                     'source:',
                     inspect.getsource(function),
                 ])) from e
