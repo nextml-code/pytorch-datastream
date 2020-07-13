@@ -138,13 +138,14 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
 
                 raise Exception('\n'.join([
                     repr(e),
-                    'Above exception occured in the pipeline for',
-                    'item:',
-                    item_text,
+                    '',
+                    'Above exception originated from',
                     f'module: {inspect.getmodule(function)}',
-                    'source:',
+                    'from mapped function:',
                     inspect.getsource(function),
-                ])) from e
+                    'for item:',
+                    item_text,
+                ])).with_traceback(e.__traceback__)
 
         return Dataset(
             dataframe=self.dataframe,
