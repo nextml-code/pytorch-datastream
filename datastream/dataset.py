@@ -434,6 +434,27 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
             ))
         )
 
+    def cache(self, key_column):
+        '''Cache dataset in-memory based on key column.'''
+        from functools import lru_cache
+
+        key_mapping = dict(zip(
+            self.dataframe[key_column],
+            range(len(self)),
+        ))
+
+        @lru_cache(maxsize=None)
+        def only_key(key):
+            return self.get_item(self.dataframe, key_mapping[key])
+
+        return Dataset(
+            dataframe=self.dataframe,
+            length=self.length,
+            get_item=lambda dataframe, index: only_key(
+                dataframe.iloc[index][key_column]
+            ),
+        )
+
 
 def test_equal():
     dataset1 = Dataset.from_subscriptable([4, 7, 12])

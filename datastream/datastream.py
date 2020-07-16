@@ -253,6 +253,13 @@ class Datastream(BaseModel, Generic[T]):
             MultiSampler.from_number(n, self.dataset),
         )
 
+    def cache(self, key_column):
+        '''Cache dataset in-memory. See :func:`Dataset.cache` for details.'''
+        return Datastream(
+            self.dataset.cache(key_column),
+            self.sampler,
+        )
+
 
 def test_datastream_merge():
 
