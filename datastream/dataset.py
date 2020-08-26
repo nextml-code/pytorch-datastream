@@ -256,6 +256,59 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
             ).items()
         }
 
+    def group_split(
+        self,
+        split_column: str,
+        proportions: Dict[str, float],
+        filepath: Optional[Union[str, Path]] = None,
+        frozen: Optional[bool] = False,
+        seed: Optional[int] = None,
+    ) -> Dict[str, Dataset[T]]:
+        '''
+        Similar to :func:`Dataset.split`, but uses a non-unique split column
+        instead of a unique key column. This is useful for example when you
+        have a dataset with examples that come from separate sources and you
+        don't want to have examples from the same source in different splits.
+        Does not support stratification.
+
+        >>> split_file = Path('doctest_split_dataset.json')
+        >>> split_datasets = (
+        ...     Dataset.from_dataframe(pd.DataFrame(dict(
+        ...         source=np.arange(100) // 4,
+        ...         number=np.random.randn(100),
+        ...     )))
+        ...     .group_split(
+        ...         split_column='source',
+        ...         proportions=dict(train=0.8, test=0.2),
+        ...         filepath=split_file,
+        ...     )
+        ... )
+        >>> len(split_datasets['train'])
+        80
+        >>> split_file.unlink()  # clean up after doctest
+        '''
+        if filepath is not None:
+            filepath = Path(filepath)
+
+        split_dataframes = tools.group_split_dataframes
+        if seed is not None:
+            split_dataframes = tools.numpy_seed(seed)(split_dataframes)
+
+        return {
+            split_name: Dataset(
+                dataframe=dataframe,
+                length=len(dataframe),
+                functions=self.functions,
+            )
+            for split_name, dataframe in split_dataframes(
+                self.dataframe,
+                split_column,
+                proportions,
+                filepath,
+                frozen,
+            ).items()
+        }
+
     def zip_index(self: Dataset[T]) -> Dataset[Tuple[T, int]]:
         '''
         Zip the output with its index. The output of the pipeline will be
@@ -343,10 +396,10 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
     def create_to_combine_mapping(datasets):
         cumprod_lengths = np.cumprod(list(map(len, datasets)))
         def to_concat(inner_indices):
-            return inner_indices[0] + sum(
-                [inner_index * cumprod_lengths[i]
-                for i, inner_index in enumerate(inner_indices[1:])]
-            )
+            return inner_indices[0] + sum([
+                inner_index * cumprod_lengths[i]
+                for i, inner_index in enumerate(inner_indices[1:])
+            ])
         return to_concat
 
     @staticmethod
@@ -539,6 +592,51 @@ def test_split_dataset():
         key_column='index',
         proportions=proportions,
         stratify_column='stratify',
+        seed=800,
+    )
+
+    split_file.unlink()
+
+    assert split_datasets1 == split_datasets2
+    assert split_datasets1 != split_datasets3
+    assert split_datasets3 == split_datasets4
+    assert split_datasets3 != split_datasets5
+
+
+def test_group_split_dataset():
+    dataset = Dataset.from_dataframe(pd.DataFrame(dict(
+        group=np.arange(100) // 4,
+        number=np.random.randn(100),
+    ))).map(tuple)
+
+    split_file = Path('test_split_dataset.json')
+    proportions = dict(
+        gradient=0.7,
+        early_stopping=0.15,
+        compare=0.15,
+    )
+
+    kwargs = dict(
+        split_column='group',
+        proportions=proportions,
+        filepath=split_file,
+    )
+
+    split_datasets1 = dataset.group_split(**kwargs)
+    split_datasets2 = dataset.group_split(**kwargs)
+    split_datasets3 = dataset.group_split(
+        split_column='group',
+        proportions=proportions,
+        seed=100,
+    )
+    split_datasets4 = dataset.group_split(
+        split_column='group',
+        proportions=proportions,
+        seed=100,
+    )
+    split_datasets5 = dataset.group_split(
+        split_column='group',
+        proportions=proportions,
         seed=800,
     )
 

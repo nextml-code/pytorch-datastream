@@ -118,7 +118,7 @@ class Datastream(BaseModel, Generic[T]):
     def map(
         self: Datastream[T], function: Callable[[T], R]
     ) -> Datastream[R]:
-        ''' 
+        '''
         Creates a new Datastream with a new mapped dataset. See
         :func:`Dataset.map` for details.
         '''

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Tuple, Union, Dict, Optional
+from typing import Tuple, Dict, Optional
 from pathlib import Path
 import json
 import numpy as np
@@ -27,7 +27,7 @@ def split_dataframes(
             'Expected sum of proportions to be 1.',
             f'Proportions were {tuple(proportions.values())}',
         ]))
-    
+
     if filepath is not None and filepath.exists():
         split = json.loads(filepath.read_text())
 
@@ -77,9 +77,28 @@ def split_dataframes(
 
     return {
         split_name: (
-            dataframe[lambda df: df[key_column].isin(split[split_name])]
+            dataframe[dataframe[key_column].isin(split[split_name])]
         )
         for split_name in proportions.keys()
+    }
+
+
+def group_split_dataframes(
+    dataframe: pd.DataFrame,
+    split_column: str,
+    proportions: Dict[str, float],
+    filepath: Optional[Path] = None,
+    frozen: Optional[bool] = False,
+):
+    key_dataframe = pd.DataFrame(dict(key=dataframe[split_column].unique()))
+    splits = split_dataframes(
+        key_dataframe, 'key', proportions, filepath=filepath, frozen=frozen
+    )
+    return {
+        split_name: (
+            dataframe[dataframe[split_column].isin(split['key'])]
+        )
+        for split_name, split in splits.items()
     }
 
 
@@ -136,7 +155,7 @@ def n_target_split(keys, proportion):
 def selected(k, unassigned):
     return np.random.choice(
         unassigned, size=k, replace=False
-    ).tolist()  
+    ).tolist()
 
 
 def mock_dataframe():
@@ -164,6 +183,24 @@ def test_standard():
     split_file.unlink()
 
     assert tuple(map(len, split_dataframes_.values())) == (80, 10, 10)
+
+
+def test_group_split_dataframe():
+    dataframe = mock_dataframe().assign(group=lambda df: df['index'] // 4)
+    split_dataframes_ = group_split_dataframes(
+        dataframe,
+        split_column='group',
+        proportions=dict(
+            train=0.8,
+            compare=0.2,
+        ),
+    )
+    group_overlap = (
+        set(split_dataframes_['train'].group)
+        .intersection(split_dataframes_['compare'].group)
+    )
+    assert len(group_overlap) == 0
+    assert tuple(map(len, split_dataframes_.values())) == (80, 20)
 
 
 def test_validate_proportions():
