@@ -298,7 +298,7 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
             split_name: Dataset(
                 dataframe=dataframe,
                 length=len(dataframe),
-                functions=self.functions,
+                get_item=self.get_item,
             )
             for split_name, dataframe in split_dataframes(
                 self.dataframe,
