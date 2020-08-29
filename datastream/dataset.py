@@ -4,6 +4,8 @@ from typing import (
     Tuple, Callable, Any, Union, List, TypeVar, Generic, Dict, Optional
 )
 from pathlib import Path
+from functools import lru_cache
+import textwrap
 import inspect
 import numpy as np
 import pandas as pd
@@ -132,9 +134,7 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
             try:
                 return function(item)
             except Exception as e:
-                item_text = str(item)
-                if len(item_text) > 79:
-                    item_text = item_text[:79] + ' ...'
+                item_text = textwrap.shorten(str(item), width=79)
 
                 raise Exception('\n'.join([
                     repr(e),
@@ -434,10 +434,11 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
             ))
         )
 
-    def cache(self, key_column):
-        '''Cache dataset in-memory based on key column.'''
-        from functools import lru_cache
-
+    def cache(
+        self,
+        key_column: str,
+    ):
+        '''Cache intermediate step in-memory based on key column.'''
         key_mapping = dict(zip(
             self.dataframe[key_column],
             range(len(self)),
