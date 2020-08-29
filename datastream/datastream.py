@@ -12,6 +12,7 @@ from typing import (
 )
 import numpy as np
 import torch
+from pathlib import Path
 
 from datastream import Dataset
 from datastream.samplers import (
@@ -253,7 +254,10 @@ class Datastream(BaseModel, Generic[T]):
             MultiSampler.from_number(n, self.dataset),
         )
 
-    def cache(self, key_column):
+    def cache(
+        self,
+        key_column: str,
+    ):
         '''Cache dataset in-memory. See :func:`Dataset.cache` for details.'''
         return Datastream(
             self.dataset.cache(key_column),
