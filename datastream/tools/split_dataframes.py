@@ -32,10 +32,10 @@ def split_dataframes(
         split = json.loads(filepath.read_text())
 
         if set(proportions.keys()) != set(split.keys()):
-            raise ValueError(
-                'Expected split names in split file to be the same as the'
-                'keys of proportions'
-            )
+            raise ValueError(' '.join([
+                'Expected split names in split file to be the same as the',
+                'keys in proportions',
+            ]))
     else:
         split = {
             split_name: list()
