@@ -5,6 +5,20 @@ Pytorch Datastream
 .. image:: https://badge.fury.io/py/pytorch-datastream.svg
        :target: https://badge.fury.io/py/pytorch-datastream
 
+.. image:: https://img.shields.io/github/tag/Aiwizo/pytorch-datastream.svg
+       :target: https://GitHub.com/Aiwizo/pytorch-datastream/tags/
+
+.. image:: https://img.shields.io/pypi/pyversions/pytorch-datastream.svg
+       :target: https://pypi.python.org/pypi/pytorch-datastream
+
+.. image:: https://readthedocs.org/projects/pytorch-datastream/badge/?version=latest
+       :target: https://pytorch-datastream.readthedocs.io/en/latest/?badge=latest
+
+.. image:: https://img.shields.io/pypi/l/pytorch-datastream.svg
+       :target: https://pypi.python.org/pypi/pytorch-datastream
+
+
+
 This is a simple library for creating readable dataset pipelines and
 reusing best practices for issues such as imbalanced datasets. There are
 just two components to keep track of: ``Dataset`` and ``Datastream``.
