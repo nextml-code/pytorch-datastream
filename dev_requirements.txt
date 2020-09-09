@@ -1,1 +1,2 @@
 strip-hints==0.1.9
+pytest>=6.0.1
