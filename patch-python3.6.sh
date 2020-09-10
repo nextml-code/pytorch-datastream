@@ -15,11 +15,3 @@ do
 done
 
 sed -i 's/Dataset\[[A-Z]\]/Dataset/g' datastream/datastream.py;
-
-sed -i -E 's/(Programming *Language *:: *Python *:: *)3.7/\13.6/' setup.cfg
-sed -i '/Programming Language :: Python :: 3.8/d' setup.cfg
-
-sed -i 's/python/python3.6/g' publish.sh
-sed -i -E 's/(VERSION_TAG=)(.*)(")$/\1\2+python3.6\3/' publish.sh
-sed -i '/test -z.*exit 2/d' publish.sh
-sed -i '/test -z.*exit 3/d' publish.sh
