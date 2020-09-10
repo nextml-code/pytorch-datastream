@@ -1,0 +1,59 @@
+name: Test
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [ 3.6, 3.7, 3.8 ]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Cache pip
+      uses: actions/cache@v2
+      with:
+        # This path is specific to Ubuntu
+        path: ~/.cache/pip
+        # Look to see if there is a cache hit for the corresponding requirements file
+        key: ${{ runner.os }}-python${{ matrix.python-version}}-pip-${{ hashFiles('requirements.txt') }}-${{ hashFiles('dev_requirements.txt') }}
+
+    - name: Patch for Python 3.6
+      if: matrix.python-version == 3.6
+      run: |
+        pip install strip-hints==0.1.9
+        ./patch-python3.6.sh
+
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+
+    - name: Install dev dependencies
+      run: |
+        pip install -r dev_requirements.txt
+
+    - name: Test
+      run: |
+        pytest
+
+    - name: Build package
+      run: |
+        PYTHON_VERSION=${{ matrix.python-version }}
+        python setup.py bdist_wheel --python-tag py${PYTHON_VERSION//.}
+
+    - name: Test install package
+      run: |
+        mkdir test_install
+        cd test_install
+
+        pip install virtualenv
+        virtualenv installable
+        source installable/bin/activate
+
+        pip install $(find ${GITHUB_WORKSPACE}/dist -iname "*.whl")
+        python -c "import datastream"
