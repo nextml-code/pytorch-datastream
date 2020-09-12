@@ -24,7 +24,7 @@ class StandardSampler(BaseModel, torch.utils.data.Sampler):
             replacement=replacement,
             sampler=torch.utils.data.WeightedRandomSampler(
                 torch.ones(length).double(),
-                num_samples=int(length * proportion),
+                num_samples=max(int(length * proportion), 1),
                 replacement=replacement,
             )
         )
