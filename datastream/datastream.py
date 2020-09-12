@@ -65,6 +65,9 @@ class Datastream(BaseModel, Generic[T]):
             )
         )
 
+    def __len__(self):
+        return len(self.sampler)
+
     @staticmethod
     def merge(datastreams_and_ns: Tuple[Union[
         Datastream[T],
@@ -212,6 +215,16 @@ class Datastream(BaseModel, Generic[T]):
             self.dataset,
             self.sampler.sample_proportion(proportion),
         )
+
+    def take(
+        self: Datastream[T],
+        n_samples: int,
+    ) ->  Datastream[T]:
+        '''
+        Like :func:`Datastream.sample_proportion` but specify the number of
+        samples instead of a proportion.
+        '''
+        return self.sample_proportion(min(1, n_samples / len(self)))
 
     def state_dict(self) -> Dict:
         '''Get state of datastream. Useful for checkpointing sample weights.'''
