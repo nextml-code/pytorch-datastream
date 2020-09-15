@@ -2,7 +2,7 @@ from __future__ import annotations
 from pydantic import BaseModel
 from typing import Tuple, Callable, Iterable
 from functools import partial
-from itertools import chain
+from itertools import chain, islice
 import torch
 from datastream.tools import starcompose, repeat_map_chain
 from datastream import Dataset
@@ -96,14 +96,11 @@ class MergeSampler(BaseModel, torch.utils.data.Sampler):
         return self.length
 
     def __iter__(self):
-        return iter(self.merged_samplers)
+        return islice(self.merged_samplers, self.length)
 
     @staticmethod
     def merged_samplers_length(samplers):
-        return (
-            max([len(sampler) for sampler in samplers])
-            * len(samplers)
-        )
+        return max([len(sampler) for sampler in samplers])
 
     @staticmethod
     def merge_samplers(samplers, datasets, ns):
@@ -182,7 +179,7 @@ class ZipSampler(BaseModel, torch.utils.data.Sampler):
         return self.length
 
     def __iter__(self):
-        return iter(self.zipped_samplers)
+        return islice(self.zipped_samplers, self.length)
 
     @staticmethod
     def zip_samplers(samplers, datasets):
@@ -268,9 +265,7 @@ class MultiSampler(BaseModel, torch.utils.data.Sampler):
         return self.length
 
     def __iter__(self):
-        it = self.merged_samplers
-        for _ in range(self.length):
-            yield next(it)
+        return islice(self.merged_samplers, self.length)
 
     @staticmethod
     def merge_samplers(samplers, ns):

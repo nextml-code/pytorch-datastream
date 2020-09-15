@@ -1,5 +1,5 @@
 from __future__ import annotations
-from pydantic import BaseModel
+from pydantic import BaseModel, PositiveInt
 from typing import (
     Tuple,
     Dict,
@@ -56,6 +56,9 @@ class Datastream(BaseModel, Generic[T]):
         dataset: Dataset[T],
         sampler: torch.utils.data.Sampler = None
     ):
+        if len(dataset) == 0:
+            raise ValueError('Cannot create datastream from empty dataset')
+
         super().__init__(
             dataset=dataset,
             sampler=(
@@ -67,6 +70,9 @@ class Datastream(BaseModel, Generic[T]):
 
     def __len__(self):
         return len(self.sampler)
+    
+    def __iter__(self):
+        return map(self.dataset.__getitem__, iter(self.sampler))
 
     @staticmethod
     def merge(datastreams_and_ns: Tuple[Union[
@@ -151,6 +157,10 @@ class Datastream(BaseModel, Generic[T]):
         '''
         Get ``torch.utils.data.DataLoader`` for use in pytorch pipeline.
 
+        The argument ``n_batches_per_epoch`` overrides the underlying length
+        of the dataset. If the epoch ends before the full dataset has been
+        processed then it will continue from the same point the next epoch.
+
         >>> data_loader = (
         ...     Datastream(Dataset.from_subscriptable([5, 5, 5]))
         ...     .data_loader(batch_size=5, n_batches_per_epoch=10)
@@ -218,13 +228,15 @@ class Datastream(BaseModel, Generic[T]):
 
     def take(
         self: Datastream[T],
-        n_samples: int,
+        n_samples: PositiveInt,
     ) ->  Datastream[T]:
         '''
         Like :func:`Datastream.sample_proportion` but specify the number of
         samples instead of a proportion.
         '''
-        return self.sample_proportion(min(1, n_samples / len(self)))
+        if n_samples < 1:
+            raise ValueError('n_samples must be greater than or equal to 1')
+        return self.sample_proportion(n_samples / len(self))
 
     def state_dict(self) -> Dict:
         '''Get state of datastream. Useful for checkpointing sample weights.'''
@@ -278,6 +290,28 @@ class Datastream(BaseModel, Generic[T]):
         )
 
 
+def test_infinite():
+
+    datastream = Datastream(Dataset.from_subscriptable(list('abc')))
+    it = iter(datastream.data_loader(batch_size=8, n_batches_per_epoch=10))
+    for _ in range(10):
+        batch = next(it)
+
+
+def test_iter():
+
+    datastream = Datastream(Dataset.from_subscriptable(list('abc')))
+    assert len(list(datastream)) == 3
+
+
+def test_empty():
+
+    import pytest
+
+    with pytest.raises(ValueError):
+        Datastream(Dataset.from_subscriptable(list()))
+
+
 def test_datastream_merge():
 
     datastream = Datastream.merge([
@@ -289,9 +323,15 @@ def test_datastream_merge():
     for _ in range(2):
         index = next(it)
 
-    it = iter(datastream.data_loader(batch_size=8))
+    it = iter(datastream.data_loader(batch_size=8, n_batches_per_epoch=10))
     for _ in range(10):
         batch = next(it)
+
+    assert (
+        len(list(
+            datastream.data_loader(batch_size=1)
+        )) == len(datastream)
+    )
 
 
 def test_datastream_zip():
@@ -313,6 +353,12 @@ def test_datastream_zip():
     assert batch[0][0] == 1 and batch[0][1] == 2 and batch[0][2] == 1
     assert batch[1][0] == 3 and batch[1][1] == 4 and batch[1][2] == 5
     assert batch[2][0] == 6 and batch[2][1] == 7 and batch[2][2] == 6
+
+    assert (
+        len(list(
+            zipped_datastream.data_loader(batch_size=1)
+        )) == len(zipped_datastream)
+    )
 
 
 def test_datastream_merge_zip_merge():
@@ -442,3 +488,20 @@ def test_multi_sample():
     zero_indices = set([index for _, index in output[:2]])
     for number, index in output2:
         assert index not in zero_indices
+
+
+def test_take():
+
+    import pytest
+
+    datastream = Datastream(Dataset.from_subscriptable(list('abc'))).take(2)
+    assert len(list(datastream.data_loader(batch_size=1))) == 2
+
+    with pytest.raises(ValueError):
+        Datastream(Dataset.from_subscriptable(list('abc'))).take(0)
+
+    datastream = Datastream.merge([
+        Datastream(Dataset.from_subscriptable(list('abc'))),
+        Datastream(Dataset.from_subscriptable(list('d'))),
+    ])
+    assert len(list(datastream.take(2).data_loader(batch_size=1))) == 2
