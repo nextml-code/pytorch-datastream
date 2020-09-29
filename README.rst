@@ -35,17 +35,6 @@ Install
 
     pip install pytorch-datastream
 
-Install from source
--------------------
-
-.. pip install -e .
-
-To patch the code locally for `Python 3.6` run `patch-python3.6.sh`.
-
-.. code-block:: bash
-
-    $ ./patch-python3.6.sh
-
 Usage
 =====
 
@@ -111,9 +100,13 @@ More usage examples
 See the `documentation <https://pytorch-datastream.readthedocs.io/en/latest/>`_
 for more usage examples.
 
+Install from source
+===================
 
-Python 3.6 support
-==================
-Releases prior to version `0.3.3` are wrongly marked as supported by `Python 3` and will crash on import under `Python 3.6` and older.
+.. pip install -e .
 
-The `Python 3.6` compatible build is functionally equivalent but some of the type hinting has been sacrificed.
+To patch the code locally for `Python 3.6` run `patch-python3.6.sh`.
+
+.. code-block:: bash
+
+    $ ./patch-python3.6.sh
