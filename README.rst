@@ -5,9 +5,6 @@ Pytorch Datastream
 .. image:: https://badge.fury.io/py/pytorch-datastream.svg
        :target: https://badge.fury.io/py/pytorch-datastream
 
-.. image:: https://img.shields.io/github/tag/Aiwizo/pytorch-datastream.svg
-       :target: https://GitHub.com/Aiwizo/pytorch-datastream/tags/
-
 .. image:: https://img.shields.io/pypi/pyversions/pytorch-datastream.svg
        :target: https://pypi.python.org/pypi/pytorch-datastream
 
