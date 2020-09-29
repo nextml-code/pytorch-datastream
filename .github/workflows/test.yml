@@ -42,8 +42,9 @@ jobs:
         pytest
 
     - name: Build package
+      env:
+        PYTHON_VERSION: ${{ matrix.python-version }}
       run: |
-        PYTHON_VERSION=${{ matrix.python-version }}
         python setup.py bdist_wheel --python-tag py${PYTHON_VERSION//.}
 
     - name: Test install package
