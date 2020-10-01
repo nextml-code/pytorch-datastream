@@ -49,12 +49,12 @@ jobs:
 
     - name: Test install package
       run: |
-        mkdir test_install
-        cd test_install
-
         pip install virtualenv
         virtualenv installable
         source installable/bin/activate
 
-        pip install $(find ${GITHUB_WORKSPACE}/dist -iname "*.whl")
+        pip install dist/$(ls dist)
+
+        mkdir test_install
+        cd test_install
         python -c "import datastream"
