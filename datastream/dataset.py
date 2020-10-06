@@ -87,6 +87,17 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
             get_item=lambda df, index: df.iloc[index],
         )
 
+    def new_columns(self, **kwargs):
+        '''
+        Appends new column(s) to ``self.dataframe`` using
+        ``pd.DataFrame.assign``.
+        '''
+        return Dataset(
+            dataframe=self.dataframe.assign(**kwargs),
+            length=len(self),
+            get_item=self.get_item,
+        )
+
     def __getitem__(self: Dataset[T], index: int) -> T:
         '''Get an example ``T`` from the ``Dataset[T]``'''
         return self.get_item(self.dataframe, index)
@@ -532,6 +543,15 @@ def test_subscript():
         mapped_dataset = dataset.map(lambda number: number * 2)
 
         assert mapped_dataset[-1] == number_list[-1] * 2
+
+
+def test_new_columns():
+    dataset = (
+        Dataset.from_dataframe(pd.DataFrame(dict(key=[1, 2, 3])))
+        .new_columns(new=lambda df: df['key'] * 2)
+        .map(lambda row: row['new'])
+    )
+    assert dataset[2] == 6
 
 
 def test_subset():
