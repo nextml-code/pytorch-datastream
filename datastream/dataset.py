@@ -87,17 +87,6 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
             get_item=lambda df, index: df.iloc[index],
         )
 
-    def new_columns(self, **kwargs):
-        '''
-        Appends new column(s) to ``self.dataframe`` using
-        ``pd.DataFrame.assign``.
-        '''
-        return Dataset(
-            dataframe=self.dataframe.assign(**kwargs),
-            length=len(self),
-            get_item=self.get_item,
-        )
-
     def __getitem__(self: Dataset[T], index: int) -> T:
         '''Get an example ``T`` from the ``Dataset[T]``'''
         return self.get_item(self.dataframe, index)
@@ -340,6 +329,32 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
             ).items()
         }
 
+
+    def new_columns(
+        self: Dataset[T], **kwargs: Callable[pd.Dataframe, pd.Series]
+    ) -> Dataset[T]:
+        '''
+        Append new column(s) to the :attr:`.Dataset.dataframe` by passing the
+        new column names as keywords with functions that take the
+        :attr:`.Dataset.dataframe` as input and return :func:`pandas.Series`.
+
+        >>> (
+        ...     Dataset.from_dataframe(pd.DataFrame(dict(number=[1, 2, 3])))
+        ...     .new_columns(twice=lambda df: df['number'] * 2)
+        ...     .map(lambda row: row['twice'])
+        ... )[-1]
+        6
+        '''
+        if len(set(kwargs.keys()) & set(self.dataframe.columns)) >= 1:
+            raise ValueError('Should not replace existing columns')
+
+        dataframe = self.dataframe.assign(**kwargs)
+        return Dataset(
+            dataframe=dataframe,
+            length=len(dataframe),
+            get_item=self.get_item,
+        )
+
     def zip_index(self: Dataset[T]) -> Dataset[Tuple[T, int]]:
         '''
         Zip the output with its index. The output of the pipeline will be
@@ -545,15 +560,6 @@ def test_subscript():
         assert mapped_dataset[-1] == number_list[-1] * 2
 
 
-def test_new_columns():
-    dataset = (
-        Dataset.from_dataframe(pd.DataFrame(dict(key=[1, 2, 3])))
-        .new_columns(new=lambda df: df['key'] * 2)
-        .map(lambda row: row['new'])
-    )
-    assert dataset[2] == 6
-
-
 def test_subset():
     numbers = [4, 7, 12]
     dataset = Dataset.from_subscriptable(numbers).subset(
@@ -568,6 +574,18 @@ def test_subset():
         .subset(lambda df: df['number'] >= 12)
     )
     assert dataset[0]['number'] == numbers[2]
+
+
+def test_new_columns():
+    from pytest import raises
+
+    with raises(ValueError):
+        dataset = (
+            Dataset.from_dataframe(pd.DataFrame(dict(
+                key=np.arange(100),
+            )))
+            .new_columns(key=lambda df: df['key'] * 2)
+        )
 
 
 def test_concat_dataset():
