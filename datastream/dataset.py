@@ -330,7 +330,7 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
         }
 
 
-    def new_columns(
+    def with_columns(
         self: Dataset[T], **kwargs: Callable[pd.Dataframe, pd.Series]
     ) -> Dataset[T]:
         '''
@@ -340,7 +340,7 @@ class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
 
         >>> (
         ...     Dataset.from_dataframe(pd.DataFrame(dict(number=[1, 2, 3])))
-        ...     .new_columns(twice=lambda df: df['number'] * 2)
+        ...     .with_columns(twice=lambda df: df['number'] * 2)
         ...     .map(lambda row: row['twice'])
         ... )[-1]
         6
@@ -576,7 +576,7 @@ def test_subset():
     assert dataset[0]['number'] == numbers[2]
 
 
-def test_new_columns():
+def test_with_columns():
     from pytest import raises
 
     with raises(ValueError):
@@ -584,7 +584,7 @@ def test_new_columns():
             Dataset.from_dataframe(pd.DataFrame(dict(
                 key=np.arange(100),
             )))
-            .new_columns(key=lambda df: df['key'] * 2)
+            .with_columns(key=lambda df: df['key'] * 2)
         )
 
 
