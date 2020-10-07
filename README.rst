@@ -51,6 +51,8 @@ a more extensive list on API and usage.
         .map
         .subset
         .split
+        .cache
+        .with_columns
 
     Datastream.merge
     Datastream.zip
@@ -63,8 +65,6 @@ a more extensive list on API and usage.
         .weight
         .state_dict
         .load_state_dict
-        .multi_sample
-        .sample_proportion
 
 Merge / stratify / oversample datastreams
 -----------------------------------------
