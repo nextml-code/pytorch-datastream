@@ -22,6 +22,10 @@ jobs:
       run: |
         pip install strip-hints==0.1.9
         ./patch-python3.6.sh
+        git add --all
+        git commit --message "Python 3.6 patch"
+        latest_tag=$(git describe --abbrev=0 --tags)
+        git tag --force ${latest_tag}
 
     - name: Install dependencies
       run: |
