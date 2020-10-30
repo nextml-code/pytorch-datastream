@@ -505,3 +505,16 @@ def test_take():
         Datastream(Dataset.from_subscriptable(list('d'))),
     ])
     assert len(list(datastream.take(2).data_loader(batch_size=1))) == 2
+
+
+def test_sequential_sampler():
+
+    from datastream.samplers import SequentialSampler
+
+    dataset = Dataset.from_subscriptable(list('abc'))
+    datastream = Datastream(dataset, SequentialSampler(len(dataset))).take(2)
+    assert len(list(datastream.data_loader(batch_size=1))) == 2
+
+    datastream = Datastream(dataset, SequentialSampler(len(dataset)))
+    it = iter(datastream.data_loader(batch_size=6, n_batches_per_epoch=10))
+    assert next(it) == ['a', 'b', 'c', 'a', 'b', 'c']
