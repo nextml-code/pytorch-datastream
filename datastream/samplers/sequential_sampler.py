@@ -23,5 +23,7 @@ class SequentialSampler(BaseModel, torch.utils.data.Sampler):
         return iter(self.sampler)
 
     def sample_proportion(self, proportion):
-        sampler = SequentialSampler(int(len(self) * proportion))
-        return sampler
+        return SequentialSampler(min(
+            len(self),
+            int(len(self) * proportion)
+        ))
