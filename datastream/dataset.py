@@ -1,7 +1,7 @@
 from __future__ import annotations
 from pydantic import BaseModel
 from typing import (
-    Tuple, Callable, Any, Union, List, TypeVar, Generic, Dict, Optional
+    Tuple, Callable, Union, List, TypeVar, Generic, Dict, Optional
 )
 from pathlib import Path
 from functools import lru_cache
@@ -9,7 +9,6 @@ import textwrap
 import inspect
 import numpy as np
 import pandas as pd
-import torch
 from datastream import tools
 
 
@@ -17,7 +16,7 @@ T = TypeVar('T')
 R = TypeVar('R')
 
 
-class Dataset(BaseModel, torch.utils.data.Dataset, Generic[T]):
+class Dataset(BaseModel, Generic[T]):
     '''
     A ``Dataset[T]`` is a mapping that allows pipelining of functions in a
     readable syntax returning an example of type ``T``.
