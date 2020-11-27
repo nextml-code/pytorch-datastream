@@ -26,7 +26,7 @@ class MergeSampler(BaseModel, torch.utils.data.Sampler):
             samplers=samplers,
             datasets=datasets,
             ns=ns,
-            length=MergeSampler.merged_samplers_length(samplers),
+            length=MergeSampler.merged_samplers_length(samplers, ns),
             from_mapping=Dataset.create_from_concat_mapping(datasets),
             merged_samplers=MergeSampler.merge_samplers(
                 samplers, datasets, ns
@@ -40,8 +40,11 @@ class MergeSampler(BaseModel, torch.utils.data.Sampler):
         return islice(self.merged_samplers, self.length)
 
     @staticmethod
-    def merged_samplers_length(samplers):
-        return max([len(sampler) for sampler in samplers])
+    def merged_samplers_length(samplers, ns):
+        return (
+            min([len(sampler) / n for sampler, n in zip(samplers, ns)])
+            * sum(ns)
+        )
 
     @staticmethod
     def merge_samplers(samplers, datasets, ns):
