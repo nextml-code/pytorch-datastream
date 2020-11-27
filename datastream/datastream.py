@@ -31,7 +31,9 @@ R = TypeVar('R')
 class Datastream(BaseModel, Generic[T]):
     '''
     ``Datastream[T]`` combines a ``Dataset[T]`` and a sampler into a stream of
-    examples. By default the samples are drawn without replacement until the
+    examples.
+
+    By default the samples are drawn without replacement until the
     full dataset is exhausted. The proportion of the dataset that should be
     drawn before allowing replacement can be changed with
     :func:`Datastream.sample_proportion`.
@@ -70,7 +72,7 @@ class Datastream(BaseModel, Generic[T]):
 
     def __len__(self):
         return len(self.sampler)
-    
+
     def __iter__(self):
         return map(self.dataset.__getitem__, iter(self.sampler))
 
@@ -80,17 +82,22 @@ class Datastream(BaseModel, Generic[T]):
         Tuple[Datastream[T], int]
     ], ...]) -> Datastream[T]:
         '''
-        Merge multiple datastreams by interleaving them. Optionally you can
-        define different lengths per ``Datastream``.
+        Creates a merged datastream where samples are drawn one at a time from
+        each underlying datastream (also known as "interleave").
 
-        .. highlight:: python
-        .. code-block:: python
+        Optionally you can define the number of drawn samples per
+        ``Datastream``.
 
-            Datastream.merge([
-                (datastream1, 2),
-                (datastream2, 1),
-                (datastream3, 1),
-            ])
+        >>> datastream1 = Datastream(Dataset.from_subscriptable([1, 1]))
+        >>> datastream2 = Datastream(Dataset.from_subscriptable([2, 2]))
+        >>> datastream3 = Datastream(Dataset.from_subscriptable([3, 3, 3, 3]))
+        >>> merged_datastream = Datastream.merge([
+        ...     (datastream1, 1),
+        ...     (datastream2, 1),
+        ...     (datastream3, 2),
+        ... ])
+        >>> list(merged_datastream)
+        [1, 2, 3, 3, 1, 2, 3, 3]
         '''
         datastreams_and_ns = [
             x if type(x) is tuple else (x, 1)
