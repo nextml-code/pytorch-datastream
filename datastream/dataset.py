@@ -35,7 +35,7 @@ class Dataset(BaseModel, Generic[T]):
         ...         cost * 2,
         ...     ))
         ... )
-        >>> print(dataset[2])
+        >>> dataset[2]
         ('banana', 28)
     '''
 
@@ -51,10 +51,11 @@ class Dataset(BaseModel, Generic[T]):
     def from_subscriptable(subscriptable) -> Dataset:
         '''
         Create ``Dataset`` based on subscriptable i.e. implements
-        ``__getitem__`` and ``__len__``. Should only be used for simple
-        examples as a ``Dataset`` created with this method does not support
-        methods that require a source dataframe (i.e. :func:`Dataset.split`
-        and :func:`Dataset.subset`)
+        ``__getitem__`` and ``__len__``.
+
+        Should only be used for simple examples as a ``Dataset`` created with
+        this method does not support methods that require a source dataframe
+        like :func:`Dataset.split` and :func:`Dataset.subset`.
         '''
 
         return (
@@ -328,7 +329,6 @@ class Dataset(BaseModel, Generic[T]):
             ).items()
         }
 
-
     def with_columns(
         self: Dataset[T], **kwargs: Callable[pd.Dataframe, pd.Series]
     ) -> Dataset[T]:
@@ -405,8 +405,11 @@ class Dataset(BaseModel, Generic[T]):
     def concat(datasets: List[Dataset]) -> Dataset[R]:
         '''
         Concatenate multiple datasets together so that they behave like a
-        single dataset. Consider using :func:`Datastream.merge` if you have
-        multiple data sources.
+        single dataset.
+
+        Consider using :func:`Datastream.merge` if you have
+        multiple data sources instead as it allows you to control the number
+        of samples from each source in the training batches.
         '''
         from_concat_mapping = Dataset.create_from_concat_mapping(datasets)
 
@@ -440,6 +443,7 @@ class Dataset(BaseModel, Generic[T]):
     @staticmethod
     def create_to_combine_mapping(datasets):
         cumprod_lengths = np.cumprod(list(map(len, datasets)))
+
         def to_concat(inner_indices):
             return inner_indices[0] + sum([
                 inner_index * cumprod_lengths[i]
@@ -453,7 +457,7 @@ class Dataset(BaseModel, Generic[T]):
         Zip multiple datasets together so that all combinations of examples
         are possible (i.e. the product) creating tuples like
         ``(example1, example2, ...)``.
-    
+
         The created dataset will not have a dataframe because combined
         datasets are often very long and it is expensive to enumerate them.
         '''
