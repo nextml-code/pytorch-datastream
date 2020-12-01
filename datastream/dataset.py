@@ -413,15 +413,28 @@ class Dataset(BaseModel, Generic[T]):
         '''
         from_concat_mapping = Dataset.create_from_concat_mapping(datasets)
 
-        def get_item(dataframe, index):
-            dataset_index, inner_index = from_concat_mapping(index)
-            return datasets[dataset_index][inner_index]
+        if any([dataset.dataframe is None for dataset in datasets]):
 
-        return Dataset(
-            dataframe=None, # TODO: concat dataframes?
-            length=sum(map(len, datasets)),
-            get_item=get_item,
-        )
+            def get_item(dataframe, index):
+                dataset_index, inner_index = from_concat_mapping(index)
+                return datasets[dataset_index][inner_index]
+
+            return Dataset(
+                dataframe=None,
+                length=sum(map(len, datasets)),
+                get_item=get_item,
+            )
+        else:
+
+            def get_item(dataframe, index):
+                dataset_index, _ = from_concat_mapping(index)
+                return datasets[dataset_index].get_item(dataframe, index)
+
+            return Dataset(
+                dataframe=pd.concat([dataset.dataframe for dataset in datasets]),
+                length=sum(map(len, datasets)),
+                get_item=get_item,
+            )
 
     @staticmethod
     def create_from_combine_mapping(datasets):
@@ -598,6 +611,28 @@ def test_concat_dataset():
     ])
 
     assert dataset[6] == 1
+
+
+def test_concat_heterogenous_datasets():
+    dataset1 = Dataset.from_dataframe(
+        pd.DataFrame(dict(a=[1], b=['a'])).set_index('a'),
+    )
+    dataset2 = Dataset.from_dataframe(
+        pd.DataFrame(dict(a=[1], b=[1], c=[2])).set_index('a'),
+    )
+    dataset = (
+        Dataset.concat([dataset1, dataset2])
+        .map(lambda row: row['b'])
+    )
+
+    assert list(dataset) == ['a', 1]
+
+    dataset_other_functions = Dataset.concat([
+        dataset1.map(lambda row: row['b']),
+        dataset2.map(lambda row: row['c']),
+    ])
+
+    assert list(dataset_other_functions) == ['a', 2]
 
 
 def test_zip_dataset():

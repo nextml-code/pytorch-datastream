@@ -236,7 +236,7 @@ class Datastream(BaseModel, Generic[T]):
     def take(
         self: Datastream[T],
         n_samples: PositiveInt,
-    ) ->  Datastream[T]:
+    ) -> Datastream[T]:
         '''
         Like :func:`Datastream.sample_proportion` but specify the number of
         samples instead of a proportion.
