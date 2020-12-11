@@ -9,7 +9,7 @@ def stratified_split(
     key_column: str,
     proportions: Dict[str, float],
     stratify_column: Optional[str] = None,
-    save_directory: Optional[Path] = None,
+    filepath: Optional[Path] = None,
     seed: Optional[int] = None,
     frozen: Optional[bool] = False,
 ):
@@ -33,10 +33,7 @@ def stratified_split(
             stratum,
             key_column=key_column,
             proportions=proportions,
-            filepath=(
-                save_directory / f'{hash(stratum_value)}.json'
-                if save_directory is not None else None
-            ),
+            filepath=filepath,
             seed=seed,
             frozen=frozen,
         )
