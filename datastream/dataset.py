@@ -5,7 +5,6 @@ from typing import (
 )
 from pathlib import Path
 from functools import lru_cache
-import warnings
 import textwrap
 import inspect
 import numpy as np
@@ -116,6 +115,11 @@ class Dataset(BaseModel, Generic[T]):
             if item1 != item2:
                 return False
         return True
+
+    def replace(self, **kwargs):
+        new_dict = self.dict()
+        new_dict.update(**kwargs)
+        return type(self)(**new_dict)
 
     def map(
         self: Dataset[T], function: Callable[[T], R]
@@ -258,7 +262,8 @@ class Dataset(BaseModel, Generic[T]):
             save_directory.mkdir(parents=True, exist_ok=True)
 
         if stratify_column is not None:
-            return self._stratified_split(
+            return tools.stratified_split(
+                self,
                 key_column=key_column,
                 proportions=proportions,
                 stratify_column=stratify_column,
@@ -267,7 +272,8 @@ class Dataset(BaseModel, Generic[T]):
                 frozen=frozen,
             )
         else:
-            return self._unstratified_split(
+            return tools.unstratified_split(
+                self,
                 key_column=key_column,
                 proportions=proportions,
                 filepath=(
@@ -277,74 +283,6 @@ class Dataset(BaseModel, Generic[T]):
                 seed=seed,
                 frozen=frozen,
             )
-
-    def _unstratified_split(
-        self,
-        key_column: str,
-        proportions: Dict[str, float],
-        filepath: Optional[Path] = None,
-        seed: Optional[int] = None,
-        frozen: Optional[bool] = False,
-    ):
-        split_dataframes = tools.numpy_seed(seed)(tools.split_dataframes)
-        return {
-            split_name: Dataset(
-                dataframe=dataframe,
-                length=len(dataframe),
-                get_item=self.get_item,
-            )
-            for split_name, dataframe in split_dataframes(
-                self.dataframe,
-                key_column,
-                proportions,
-                filepath=filepath,
-                frozen=frozen,
-            ).items()
-        }
-
-    def _stratified_split(
-        self,
-        key_column: str,
-        proportions: Dict[str, float],
-        stratify_column: Optional[str] = None,
-        save_directory: Optional[Path] = None,
-        seed: Optional[int] = None,
-        frozen: Optional[bool] = False,
-    ):
-        if (
-            stratify_column is not None
-            and any(self.dataframe[key_column].duplicated())
-        ):
-            # mathematically impossible in the general case
-            warnings.warn(
-                'Trying to do stratified split with non-unique key column'
-                ' - cannot guarantee correct splitting of key values.'
-            )
-        strata = {
-            stratum_value: self.subset(
-                lambda df: df[stratify_column] == stratum_value
-            )
-            for stratum_value in self.dataframe[stratify_column].unique()
-        }
-        split_strata = [
-            stratum._unstratified_split(
-                key_column=key_column,
-                proportions=proportions,
-                filepath=(
-                    save_directory / f'{hash(stratum_value)}.json'
-                    if save_directory is not None else None
-                ),
-                seed=seed,
-                frozen=frozen,
-            )
-            for stratum_value, stratum in strata.items()
-        ]
-        return {
-            split_name: Dataset.concat(
-                [split_stratum[split_name] for split_stratum in split_strata]
-            )
-            for split_name in proportions.keys()
-        }
 
     def with_columns(
         self: Dataset[T], **kwargs: Callable[pd.Dataframe, pd.Series]
