@@ -10,7 +10,6 @@ def split_dataframes(
     dataframe: pd.DataFrame,
     key_column: str,
     proportions: Dict[str, float],
-    stratify_column: Optional[str] = None,
     filepath: Optional[Path] = None,
     frozen: Optional[bool] = False,
 ):
@@ -42,8 +41,7 @@ def split_dataframes(
             for split_name in proportions.keys()
         }
 
-    if dataframe[key_column].nunique() != len(dataframe):
-        raise ValueError(f'key_column {key_column} contains duplicate values')
+    key_dataframe = pd.DataFrame({key_column: dataframe[key_column].unique()})
 
     if frozen:
         if sum(map(len, split.values())) == 0:
@@ -52,21 +50,12 @@ def split_dataframes(
         split_proportions = tuple(proportions.items())
 
         for split_name, proportion in split_proportions[:-1]:
-            if stratify_column is None:
-                split = split_proportion(
-                    dataframe[key_column],
-                    proportion,
-                    split_name,
-                    split,
-                )
-            else:
-                for strata in stratas(dataframe, stratify_column):
-                    split = split_proportion(
-                        strata[key_column],
-                        proportion,
-                        split_name,
-                        split,
-                    )
+            split = split_proportion(
+                key_dataframe[key_column],
+                proportion,
+                split_name,
+                split,
+            )
 
         last_split_name, _ = split_proportions[-1]
         split[last_split_name] += unassigned(dataframe[key_column], split)
@@ -76,37 +65,9 @@ def split_dataframes(
             filepath.write_text(json.dumps(split, indent=4))
 
     return {
-        split_name: (
-            dataframe[dataframe[key_column].isin(split[split_name])]
-        )
-        for split_name in proportions.keys()
+        split_name: dataframe[dataframe[key_column].isin(split_keys)]
+        for split_name, split_keys in split.items()
     }
-
-
-def group_split_dataframes(
-    dataframe: pd.DataFrame,
-    split_column: str,
-    proportions: Dict[str, float],
-    filepath: Optional[Path] = None,
-    frozen: Optional[bool] = False,
-):
-    key_dataframe = pd.DataFrame(dict(key=dataframe[split_column].unique()))
-    splits = split_dataframes(
-        key_dataframe, 'key', proportions, filepath=filepath, frozen=frozen
-    )
-    return {
-        split_name: (
-            dataframe[dataframe[split_column].isin(split['key'])]
-        )
-        for split_name, split in splits.items()
-    }
-
-
-def stratas(dataframe, stratify_column):
-    return [
-        dataframe[lambda df: df[stratify_column] == strata_value]
-        for strata_value in dataframe[stratify_column].unique()
-    ]
 
 
 def split_proportion(
@@ -158,7 +119,6 @@ def mock_dataframe():
     return pd.DataFrame(dict(
         index=np.arange(100),
         number=np.random.randn(100),
-        stratify=np.concatenate([np.ones(70), np.zeros(30)]),
     ))
 
 
@@ -173,7 +133,6 @@ def test_standard():
             compare=0.1,
         ),
         filepath=split_file,
-        stratify_column='stratify',
     )
 
     split_file.unlink()
@@ -183,9 +142,9 @@ def test_standard():
 
 def test_group_split_dataframe():
     dataframe = mock_dataframe().assign(group=lambda df: df['index'] // 4)
-    split_dataframes_ = group_split_dataframes(
+    split_dataframes_ = split_dataframes(
         dataframe,
-        split_column='group',
+        key_column='group',
         proportions=dict(
             train=0.8,
             compare=0.2,
@@ -209,7 +168,6 @@ def test_validate_proportions():
             key_column='index',
             proportions=dict(train=0.4, test=0.4),
             filepath=split_file,
-            stratify_column='stratify',
         )
 
 
@@ -229,25 +187,12 @@ def test_missing_key_column():
         split_file.unlink()
 
 
-def test_missing_stratify_column():
-    from pytest import raises
-
-    with raises(KeyError):
-        split_dataframes(
-            mock_dataframe(),
-            key_column='index',
-            proportions=dict(train=0.8, test=0.2),
-            stratify_column='should_fail'
-        )
-
-
 def test_no_split():
     '''we do not need to support this'''
     split_dataframes(
         mock_dataframe(),
         key_column='index',
         proportions=dict(all=1.0),
-        stratify_column='stratify'
     )
 
 
@@ -256,7 +201,6 @@ def test_split_empty():
         mock_dataframe().iloc[:0],
         key_column='index',
         proportions=dict(train=0.8, test=0.2),
-        stratify_column='stratify'
     )
     for df in split_dataframes_.values():
         assert len(df) == 0
@@ -267,7 +211,6 @@ def test_split_single_row():
         mock_dataframe().iloc[:1],
         key_column='index',
         proportions=dict(train=0.9999, test=0.0001),
-        stratify_column='stratify'
     )
     assert len(split_dataframes_['train']) == 1
     assert len(split_dataframes_['test']) == 0
@@ -282,7 +225,6 @@ def test_changed_split_names():
         key_column='index',
         proportions=dict(train=0.8, test=0.2),
         filepath=split_file,
-        stratify_column='stratify',
     )
 
     with raises(ValueError):
@@ -291,7 +233,6 @@ def test_changed_split_names():
             key_column='index',
             proportions=dict(should_fail=0.8, test=0.2),
             filepath=split_file,
-            stratify_column='stratify',
         )
     split_file.unlink()
 
@@ -315,6 +256,5 @@ def test_frozen():
         key_column='index',
         proportions=dict(train=0.8, test=0.2),
         filepath=split_file,
-        stratify_column='stratify',
     )
     split_file.unlink()
