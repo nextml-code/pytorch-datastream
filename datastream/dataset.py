@@ -804,8 +804,7 @@ def test_update_stratified_split():
         Dataset.from_dataframe(pd.DataFrame(dict(
             index=np.arange(100),
             number=np.random.randn(100),
-            stratify1=np.random.randint(0, 10, 100),
-            stratify2=np.random.randint(0, 10, 100),
+            stratify=np.random.randint(0, 10, 100),
         )))
         .map(tuple)
     )
@@ -819,7 +818,7 @@ def test_update_stratified_split():
             key_column='index',
             proportions=dict(train=0.8, test=0.2),
             filepath=filepath,
-            stratify_column='stratify1',
+            stratify_column='stratify',
         )
     )
 
@@ -829,7 +828,7 @@ def test_update_stratified_split():
             key_column='index',
             proportions=dict(train=0.8, test=0.2),
             filepath=filepath,
-            stratify_column='stratify2',
+            stratify_column='stratify',
         )
     )
 
@@ -840,8 +839,8 @@ def test_update_stratified_split():
     )
 
     assert (
-        splits1['compare'].dataframe['index']
-        .isin(splits2['compare'].dataframe['index'])
+        splits1['test'].dataframe['index']
+        .isin(splits2['test'].dataframe['index'])
         .all()
     )
 
