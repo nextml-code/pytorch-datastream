@@ -5,6 +5,7 @@ from typing import (
 )
 from pathlib import Path
 from functools import lru_cache
+import warnings
 import textwrap
 import inspect
 import numpy as np
@@ -218,7 +219,7 @@ class Dataset(BaseModel, Generic[T]):
         key_column: str,
         proportions: Dict[str, float],
         stratify_column: Optional[str] = None,
-        filepath: Optional[Union[str, Path]] = None,
+        save_directory: Optional[Union[str, Path]] = None,
         frozen: Optional[bool] = False,
         seed: Optional[int] = None,
     ) -> Dict[str, Dataset[T]]:
@@ -226,7 +227,7 @@ class Dataset(BaseModel, Generic[T]):
         Split dataset into multiple parts. Optionally you can chose to stratify
         on a column in the source dataframe or save the split to a json file.
         If you are sure that the split strategy will not change then you can
-        safely use a seed instead of a filepath.
+        safely use a seed instead of a save_directory.
 
         Saved splits can continue from the old split and handles:
 
@@ -252,14 +253,40 @@ class Dataset(BaseModel, Generic[T]):
         >>> split_datasets['test'][0]
         3
         '''
-        if filepath is not None:
-            filepath = Path(filepath)
+        if save_directory is not None:
+            save_directory = Path(save_directory)
+            save_directory.mkdir(parents=True, exist_ok=True)
 
-        if seed is None:
-            split_dataframes = tools.split_dataframes
+        if stratify_column is not None:
+            return self._stratified_split(
+                key_column=key_column,
+                proportions=proportions,
+                stratify_column=stratify_column,
+                save_directory=save_directory,
+                seed=seed,
+                frozen=frozen,
+            )
         else:
-            split_dataframes = tools.numpy_seed(seed)(tools.split_dataframes)
+            return self._unstratified_split(
+                key_column=key_column,
+                proportions=proportions,
+                filepath=(
+                    save_directory / 'split.json'
+                    if save_directory is not None else None
+                ),
+                seed=seed,
+                frozen=frozen,
+            )
 
+    def _unstratified_split(
+        self,
+        key_column: str,
+        proportions: Dict[str, float],
+        filepath: Optional[Path] = None,
+        seed: Optional[int] = None,
+        frozen: Optional[bool] = False,
+    ):
+        split_dataframes = tools.numpy_seed(seed)(tools.split_dataframes)
         return {
             split_name: Dataset(
                 dataframe=dataframe,
@@ -270,63 +297,53 @@ class Dataset(BaseModel, Generic[T]):
                 self.dataframe,
                 key_column,
                 proportions,
-                stratify_column,
-                filepath,
-                frozen,
+                filepath=filepath,
+                frozen=frozen,
             ).items()
         }
 
-    def group_split(
+    def _stratified_split(
         self,
-        split_column: str,
+        key_column: str,
         proportions: Dict[str, float],
-        filepath: Optional[Union[str, Path]] = None,
-        frozen: Optional[bool] = False,
+        stratify_column: Optional[str] = None,
+        save_directory: Optional[Path] = None,
         seed: Optional[int] = None,
-    ) -> Dict[str, Dataset[T]]:
-        '''
-        Similar to :func:`Dataset.split`, but uses a non-unique split column
-        instead of a unique key column. This is useful for example when you
-        have a dataset with examples that come from separate sources and you
-        don't want to have examples from the same source in different splits.
-        Does not support stratification.
-
-        >>> split_file = Path('doctest_split_dataset.json')
-        >>> split_datasets = (
-        ...     Dataset.from_dataframe(pd.DataFrame(dict(
-        ...         source=np.arange(100) // 4,
-        ...         number=np.random.randn(100),
-        ...     )))
-        ...     .group_split(
-        ...         split_column='source',
-        ...         proportions=dict(train=0.8, test=0.2),
-        ...         filepath=split_file,
-        ...     )
-        ... )
-        >>> len(split_datasets['train'])
-        80
-        >>> split_file.unlink()  # clean up after doctest
-        '''
-        if filepath is not None:
-            filepath = Path(filepath)
-
-        split_dataframes = tools.group_split_dataframes
-        if seed is not None:
-            split_dataframes = tools.numpy_seed(seed)(split_dataframes)
-
-        return {
-            split_name: Dataset(
-                dataframe=dataframe,
-                length=len(dataframe),
-                get_item=self.get_item,
+        frozen: Optional[bool] = False,
+    ):
+        if (
+            stratify_column is not None
+            and any(self.dataframe[key_column].duplicated())
+        ):
+            # mathematically impossible in the general case
+            warnings.warn(
+                'Trying to do stratified split with non-unique key column'
+                ' - cannot guarantee correct splitting of key values.'
             )
-            for split_name, dataframe in split_dataframes(
-                self.dataframe,
-                split_column,
-                proportions,
-                filepath,
-                frozen,
-            ).items()
+        strata = {
+            stratum_value: self.subset(
+                lambda df: df[stratify_column] == stratum_value
+            )
+            for stratum_value in self.dataframe[stratify_column].unique()
+        }
+        split_strata = [
+            stratum._unstratified_split(
+                key_column=key_column,
+                proportions=proportions,
+                filepath=(
+                    save_directory / f'{hash(stratum_value)}.json'
+                    if save_directory is not None else None
+                ),
+                seed=seed,
+                frozen=frozen,
+            )
+            for stratum_value, stratum in strata.items()
+        ]
+        return {
+            split_name: Dataset.concat(
+                [split_stratum[split_name] for split_stratum in split_strata]
+            )
+            for split_name in proportions.keys()
         }
 
     def with_columns(
@@ -672,13 +689,14 @@ def test_combine_dataset():
 
 
 def test_split_dataset():
+    import shutil
     dataset = Dataset.from_dataframe(pd.DataFrame(dict(
         index=np.arange(100),
         number=np.random.randn(100),
         stratify=np.concatenate([np.ones(50), np.zeros(50)]),
     ))).map(tuple)
 
-    split_file = Path('test_split_dataset.json')
+    save_directory = Path('test_split_dataset')
     proportions = dict(
         gradient=0.7,
         early_stopping=0.15,
@@ -688,7 +706,7 @@ def test_split_dataset():
     kwargs = dict(
         key_column='index',
         proportions=proportions,
-        filepath=split_file,
+        save_directory=save_directory,
         stratify_column='stratify',
     )
 
@@ -712,8 +730,7 @@ def test_split_dataset():
         stratify_column='stratify',
         seed=800,
     )
-
-    split_file.unlink()
+    shutil.rmtree(save_directory)
 
     assert split_datasets1 == split_datasets2
     assert split_datasets1 != split_datasets3
@@ -722,12 +739,13 @@ def test_split_dataset():
 
 
 def test_group_split_dataset():
+    import shutil
     dataset = Dataset.from_dataframe(pd.DataFrame(dict(
         group=np.arange(100) // 4,
         number=np.random.randn(100),
     ))).map(tuple)
 
-    split_file = Path('test_split_dataset.json')
+    save_directory = Path('test_split_dataset')
     proportions = dict(
         gradient=0.7,
         early_stopping=0.15,
@@ -735,32 +753,114 @@ def test_group_split_dataset():
     )
 
     kwargs = dict(
-        split_column='group',
+        key_column='group',
         proportions=proportions,
-        filepath=split_file,
+        save_directory=save_directory,
     )
 
-    split_datasets1 = dataset.group_split(**kwargs)
-    split_datasets2 = dataset.group_split(**kwargs)
-    split_datasets3 = dataset.group_split(
-        split_column='group',
+    split_datasets1 = dataset.split(**kwargs)
+    split_datasets2 = dataset.split(**kwargs)
+    split_datasets3 = dataset.split(
+        key_column='group',
         proportions=proportions,
         seed=100,
     )
-    split_datasets4 = dataset.group_split(
-        split_column='group',
+    split_datasets4 = dataset.split(
+        key_column='group',
         proportions=proportions,
         seed=100,
     )
-    split_datasets5 = dataset.group_split(
-        split_column='group',
+    split_datasets5 = dataset.split(
+        key_column='group',
         proportions=proportions,
         seed=800,
     )
 
-    split_file.unlink()
+    shutil.rmtree(save_directory)
 
     assert split_datasets1 == split_datasets2
     assert split_datasets1 != split_datasets3
     assert split_datasets3 == split_datasets4
     assert split_datasets3 != split_datasets5
+
+
+def test_missing_stratify_column():
+    from pytest import raises
+
+    dataset = Dataset.from_dataframe(pd.DataFrame(dict(
+        index=np.arange(100),
+        number=np.random.randn(100),
+    ))).map(tuple)
+
+    with raises(KeyError):
+        dataset.split(
+            key_column='index',
+            proportions=dict(train=0.8, test=0.2),
+            stratify_column='should_fail',
+        )
+
+
+def test_split_proportions():
+    dataset = Dataset.from_dataframe(pd.DataFrame(dict(
+        index=np.arange(100),
+        number=np.random.randn(100),
+        stratify=np.arange(100) // 10,
+    ))).map(tuple)
+
+    splits = dataset.split(
+        key_column='index',
+        proportions=dict(train=0.8, test=0.2),
+        stratify_column='stratify',
+    )
+
+    assert len(splits['train']) == 80
+    assert len(splits['test']) == 20
+
+
+def test_with_columns_split():
+    dataset = (
+        Dataset.from_dataframe(pd.DataFrame(dict(
+            index=np.arange(100),
+            number=np.arange(100),
+        )))
+        .map(tuple)
+        .with_columns(split=lambda df: df['index'] * 2)
+    )
+
+    splits = dataset.split(
+        key_column='index',
+        proportions=dict(train=0.8, test=0.2),
+    )
+
+    assert splits['train'][0][0] * 2 == splits['train'][0][2]
+
+
+def test_split_save_directory():
+    import shutil
+
+    dataset = (
+        Dataset.from_dataframe(pd.DataFrame(dict(
+            index=np.arange(100),
+            number=np.random.randn(100),
+            stratify=np.arange(100) // 10,
+        )))
+        .map(tuple)
+    )
+
+    save_directory = Path('tmp_test_directory')
+    splits1 = dataset.split(
+        key_column='index',
+        proportions=dict(train=0.8, test=0.2),
+        save_directory=save_directory,
+    )
+
+    splits2 = dataset.split(
+        key_column='index',
+        proportions=dict(train=0.8, test=0.2),
+        save_directory=save_directory,
+    )
+
+    assert splits1['train'][0] == splits2['train'][0]
+    assert splits1['test'][0] == splits2['test'][0]
+
+    shutil.rmtree(save_directory)
