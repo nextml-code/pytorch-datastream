@@ -144,12 +144,8 @@ def unassigned(keys, split):
 
 def n_target_split(keys, proportion):
     float_target_split = len(keys) * proportion
-
     probability = float_target_split - int(float_target_split)
-    if probability >= 1e-6 and np.random.rand() <= probability:
-        return int(float_target_split) + 1
-    else:
-        return int(float_target_split)
+    return int(float_target_split) + int(np.random.rand() <= probability)
 
 
 def selected(k, unassigned):
