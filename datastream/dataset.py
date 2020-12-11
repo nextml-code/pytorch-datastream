@@ -223,7 +223,7 @@ class Dataset(BaseModel, Generic[T]):
         key_column: str,
         proportions: Dict[str, float],
         stratify_column: Optional[str] = None,
-        save_directory: Optional[Union[str, Path]] = None,
+        filepath: Optional[Union[str, Path]] = None,
         frozen: Optional[bool] = False,
         seed: Optional[int] = None,
     ) -> Dict[str, Dataset[T]]:
@@ -231,7 +231,7 @@ class Dataset(BaseModel, Generic[T]):
         Split dataset into multiple parts. Optionally you can chose to stratify
         on a column in the source dataframe or save the split to a json file.
         If you are sure that the split strategy will not change then you can
-        safely use a seed instead of a save_directory.
+        safely use a seed instead of a filepath.
 
         Saved splits can continue from the old split and handles:
 
@@ -257,9 +257,9 @@ class Dataset(BaseModel, Generic[T]):
         >>> split_datasets['test'][0]
         3
         '''
-        if save_directory is not None:
-            save_directory = Path(save_directory)
-            save_directory.mkdir(parents=True, exist_ok=True)
+        if filepath is not None:
+            filepath = Path(filepath)
+            filepath.parent.mkdir(parents=True, exist_ok=True)
 
         if stratify_column is not None:
             return tools.stratified_split(
@@ -267,7 +267,7 @@ class Dataset(BaseModel, Generic[T]):
                 key_column=key_column,
                 proportions=proportions,
                 stratify_column=stratify_column,
-                save_directory=save_directory,
+                filepath=filepath,
                 seed=seed,
                 frozen=frozen,
             )
@@ -276,10 +276,7 @@ class Dataset(BaseModel, Generic[T]):
                 self,
                 key_column=key_column,
                 proportions=proportions,
-                filepath=(
-                    save_directory / 'split.json'
-                    if save_directory is not None else None
-                ),
+                filepath=filepath,
                 seed=seed,
                 frozen=frozen,
             )
@@ -627,14 +624,13 @@ def test_combine_dataset():
 
 
 def test_split_dataset():
-    import shutil
     dataset = Dataset.from_dataframe(pd.DataFrame(dict(
         index=np.arange(100),
         number=np.random.randn(100),
         stratify=np.concatenate([np.ones(50), np.zeros(50)]),
     ))).map(tuple)
 
-    save_directory = Path('test_split_dataset')
+    filepath = Path('test_split_dataset.json')
     proportions = dict(
         gradient=0.7,
         early_stopping=0.15,
@@ -644,7 +640,7 @@ def test_split_dataset():
     kwargs = dict(
         key_column='index',
         proportions=proportions,
-        save_directory=save_directory,
+        filepath=filepath,
         stratify_column='stratify',
     )
 
@@ -668,7 +664,7 @@ def test_split_dataset():
         stratify_column='stratify',
         seed=800,
     )
-    shutil.rmtree(save_directory)
+    filepath.unlink()
 
     assert split_datasets1 == split_datasets2
     assert split_datasets1 != split_datasets3
@@ -677,13 +673,12 @@ def test_split_dataset():
 
 
 def test_group_split_dataset():
-    import shutil
     dataset = Dataset.from_dataframe(pd.DataFrame(dict(
         group=np.arange(100) // 4,
         number=np.random.randn(100),
     ))).map(tuple)
 
-    save_directory = Path('test_split_dataset')
+    filepath = Path('test_split_dataset.json')
     proportions = dict(
         gradient=0.7,
         early_stopping=0.15,
@@ -693,7 +688,7 @@ def test_group_split_dataset():
     kwargs = dict(
         key_column='group',
         proportions=proportions,
-        save_directory=save_directory,
+        filepath=filepath,
     )
 
     split_datasets1 = dataset.split(**kwargs)
@@ -714,7 +709,7 @@ def test_group_split_dataset():
         seed=800,
     )
 
-    shutil.rmtree(save_directory)
+    filepath.unlink()
 
     assert split_datasets1 == split_datasets2
     assert split_datasets1 != split_datasets3
@@ -773,8 +768,7 @@ def test_with_columns_split():
     assert splits['train'][0][0] * 2 == splits['train'][0][2]
 
 
-def test_split_save_directory():
-    import shutil
+def test_split_filepath():
 
     dataset = (
         Dataset.from_dataframe(pd.DataFrame(dict(
@@ -785,20 +779,70 @@ def test_split_save_directory():
         .map(tuple)
     )
 
-    save_directory = Path('tmp_test_directory')
+    filepath = Path('tmp_test_split.json')
     splits1 = dataset.split(
         key_column='index',
         proportions=dict(train=0.8, test=0.2),
-        save_directory=save_directory,
+        filepath=filepath,
     )
 
     splits2 = dataset.split(
         key_column='index',
         proportions=dict(train=0.8, test=0.2),
-        save_directory=save_directory,
+        filepath=filepath,
     )
 
     assert splits1['train'][0] == splits2['train'][0]
     assert splits1['test'][0] == splits2['test'][0]
 
-    shutil.rmtree(save_directory)
+    filepath.unlink()
+
+
+def test_update_stratified_split():
+
+    dataset = (
+        Dataset.from_dataframe(pd.DataFrame(dict(
+            index=np.arange(100),
+            number=np.random.randn(100),
+            stratify1=np.random.randint(0, 10, 100),
+            stratify2=np.random.randint(0, 10, 100),
+        )))
+        .map(tuple)
+    )
+
+    filepath = Path('tmp_test_split.json')
+
+    splits1 = (
+        dataset
+        .subset(lambda df: df['index'] < 50)
+        .split(
+            key_column='index',
+            proportions=dict(train=0.8, test=0.2),
+            filepath=filepath,
+            stratify_column='stratify1',
+        )
+    )
+
+    splits2 = (
+        dataset
+        .split(
+            key_column='index',
+            proportions=dict(train=0.8, test=0.2),
+            filepath=filepath,
+            stratify_column='stratify2',
+        )
+    )
+
+    assert (
+        splits1['train'].dataframe['index']
+        .isin(splits2['train'].dataframe['index'])
+        .all()
+    )
+
+    assert (
+        splits1['compare'].dataframe['index']
+        .isin(splits2['compare'].dataframe['index'])
+        .all()
+    )
+
+    filepath.unlink()
