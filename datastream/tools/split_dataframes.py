@@ -89,7 +89,7 @@ def split_proportion(
         else:
             split = previous_split
             split[split_name] += selected(
-                n_target_split_ - n_previous_split,
+                min(n_target_split_ - n_previous_split, len(unassigned_)),
                 unassigned_,
             )
             return split
