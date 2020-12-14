@@ -800,48 +800,51 @@ def test_split_filepath():
 
 def test_update_stratified_split():
 
-    dataset = (
-        Dataset.from_dataframe(pd.DataFrame(dict(
-            index=np.arange(100),
-            number=np.random.randn(100),
-            stratify=np.random.randint(0, 10, 100),
-        )))
-        .map(tuple)
-    )
+    for _ in range(5):
 
-    filepath = Path('tmp_test_split.json')
-
-    splits1 = (
-        dataset
-        .subset(lambda df: df['index'] < 50)
-        .split(
-            key_column='index',
-            proportions=dict(train=0.8, test=0.2),
-            filepath=filepath,
-            stratify_column='stratify',
+        dataset = (
+            Dataset.from_dataframe(pd.DataFrame(dict(
+                index=np.arange(100),
+                number=np.random.randn(100),
+                stratify1=np.random.randint(0, 10, 100),
+                stratify2=np.random.randint(0, 10, 100),
+            )))
+            .map(tuple)
         )
-    )
 
-    splits2 = (
-        dataset
-        .split(
-            key_column='index',
-            proportions=dict(train=0.8, test=0.2),
-            filepath=filepath,
-            stratify_column='stratify',
+        filepath = Path('tmp_test_split.json')
+
+        splits1 = (
+            dataset
+            .subset(lambda df: df['index'] < 50)
+            .split(
+                key_column='index',
+                proportions=dict(train=0.8, test=0.2),
+                filepath=filepath,
+                stratify_column='stratify1',
+            )
         )
-    )
 
-    assert (
-        splits1['train'].dataframe['index']
-        .isin(splits2['train'].dataframe['index'])
-        .all()
-    )
+        splits2 = (
+            dataset
+            .split(
+                key_column='index',
+                proportions=dict(train=0.8, test=0.2),
+                filepath=filepath,
+                stratify_column='stratify2',
+            )
+        )
 
-    assert (
-        splits1['test'].dataframe['index']
-        .isin(splits2['test'].dataframe['index'])
-        .all()
-    )
+        assert (
+            splits1['train'].dataframe['index']
+            .isin(splits2['train'].dataframe['index'])
+            .all()
+        )
 
-    filepath.unlink()
+        assert (
+            splits1['test'].dataframe['index']
+            .isin(splits2['test'].dataframe['index'])
+            .all()
+        )
+
+        filepath.unlink()
