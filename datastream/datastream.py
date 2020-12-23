@@ -525,3 +525,19 @@ def test_sequential_sampler():
     datastream = Datastream(dataset, SequentialSampler(len(dataset)))
     it = iter(datastream.data_loader(batch_size=6, n_batches_per_epoch=10))
     assert next(it) == ['a', 'b', 'c', 'a', 'b', 'c']
+
+
+def test_merge_concat():
+    dataset = Dataset.concat([
+        Dataset.from_subscriptable([1, 2]),
+        Dataset.from_subscriptable([1, 3, 5]),
+    ])
+
+    datastream = Datastream.merge([
+        Datastream(dataset),
+        Datastream(dataset.subset(
+            lambda df: df["index"] <= 3
+        )),
+    ])
+
+    list(datastream)
