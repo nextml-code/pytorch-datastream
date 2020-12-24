@@ -527,7 +527,7 @@ def test_sequential_sampler():
     assert next(it) == ['a', 'b', 'c', 'a', 'b', 'c']
 
 
-def test_merge_concat():
+def test_concat_merge():
     dataset = Dataset.concat([
         Dataset.from_subscriptable([1, 2]),
         Dataset.from_subscriptable([1, 3, 5]),
@@ -536,8 +536,51 @@ def test_merge_concat():
     datastream = Datastream.merge([
         Datastream(dataset),
         Datastream(dataset.subset(
-            lambda df: df["index"] <= 3
+            lambda df: [index < 3 for index in range(len(df))]
         )),
     ])
 
-    list(datastream)
+    assert len(dataset.subset(
+        lambda df: [index < 3 for index in range(len(df))]
+    )) == 3
+
+    assert len(list(datastream)) == 6
+
+
+def test_combine_concat_merge():
+    dataset = Dataset.concat([
+        Dataset.zip([
+            Dataset.from_subscriptable([1]),
+            Dataset.from_subscriptable([2]),
+        ]),
+        Dataset.combine([
+            Dataset.from_subscriptable([3, 3]),
+            Dataset.from_subscriptable([4, 4, 4]),
+        ]),
+    ])
+
+    datastream = Datastream.merge([
+        Datastream(dataset),
+        Datastream(Dataset.zip([
+            Dataset.from_subscriptable([5]),
+            Dataset.from_subscriptable([6]),
+        ])),
+    ])
+
+    assert len(list(datastream)) == 2
+
+
+def test_last_batch():
+    from datastream.samplers import SequentialSampler
+
+    datastream = Datastream(
+        Dataset.from_subscriptable(list('abc'))
+    )
+    assert list(map(len, datastream.data_loader(batch_size=4))) == [3]
+    assert list(map(len, datastream.data_loader(batch_size=4, n_batches_per_epoch=2))) == [4, 4]
+
+    datastream = Datastream(
+        Dataset.from_subscriptable(list('abc')),
+        SequentialSampler(3),
+    )
+    assert list(map(len, datastream.data_loader(batch_size=2))) == [2, 1]

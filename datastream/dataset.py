@@ -5,6 +5,8 @@ from typing import (
 )
 from pathlib import Path
 from functools import lru_cache
+import string
+import random
 import textwrap
 import inspect
 import numpy as np
@@ -377,13 +379,23 @@ class Dataset(BaseModel, Generic[T]):
                 get_item=get_item,
             )
         else:
+            dataset_column = (
+                '__concat__'
+                + ''.join([random.choice(string.ascii_lowercase) for _ in range(8)])
+            )
+
+            new_dataframe = pd.concat([dataset.dataframe for dataset in datasets])
+            new_dataframe[dataset_column] = [
+                from_concat_mapping(index)[0]
+                for index in range(len(new_dataframe))
+            ]
 
             def get_item(dataframe, index):
-                dataset_index, _ = from_concat_mapping(index)
+                dataset_index = int(dataframe.iloc[index][dataset_column])
                 return datasets[dataset_index].get_item(dataframe, index)
 
             return Dataset(
-                dataframe=pd.concat([dataset.dataframe for dataset in datasets]),
+                dataframe=new_dataframe,
                 length=sum(map(len, datasets)),
                 get_item=get_item,
             )
