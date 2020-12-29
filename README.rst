@@ -33,6 +33,12 @@ Install
 
 .. code-block::
 
+    poetry add pytorch-datastream
+
+Or, for the old-timers:
+
+.. code-block::
+
     pip install pytorch-datastream
 
 Usage

@@ -1,0 +1,71 @@
+[tool.poetry]
+name = "pytorch-datastream"
+version = "0.0.0"
+description = "Simple dataset to dataloader library for pytorch"
+authors = ["Aiwizo"]
+license = "Apache-2.0"
+readme = "README.rst"
+repository = "https://github.com/Aiwizo/pytorch-datastream"
+documentation = "https://pytorch-datastream.readthedocs.io"
+keywords = [
+    "pytorch",
+    "machine",
+    "learning",
+    "dataset",
+    "pipeline",
+    "dataloader"
+]
+# some classifiers are added automatically, see https://python-poetry.org/docs/pyproject/#classifiers
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Other Environment",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+packages = [
+    { include = "datastream" },
+]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+torch = "^1.4.0"
+numpy = "^1.17.0"
+pandas = "^1.0.5"
+pydantic = "^1.5.0"
+
+[tool.poetry.dev-dependencies]
+pylint = "^2.6.0"
+flake8 = "^3.8.4"
+pytest = "^6.1.2"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+include = '\.pyi?$'
+exclude = '''
+(
+  /(
+      \.eggs
+    | \.git
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+  )/
+)
+'''
