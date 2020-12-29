@@ -1,5 +1,0 @@
-numpy>=1.17
-pandas>=0.25
-torch>=1.4,<1.7; python_version == '3.6'
-torch>=1.4; python_version > '3.6'
-pydantic>=1.5

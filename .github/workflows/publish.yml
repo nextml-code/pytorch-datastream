@@ -9,61 +9,45 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [ 3.6, 3.7, 3.8, 3.9 ]
+        python-version: [3.7, 3.8, 3.9]
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
 
-    - name: Patch for Python 3.6
-      if: matrix.python-version == 3.6
-      run: |
-        pip install strip-hints==0.1.9
-        ./patch-python3.6.sh
+      - name: Install dependencies
+        run: |
+          curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python
+          source $HOME/.poetry/env
+          poetry install
 
-        git config --global user.email "actions@github.com"
-        git config --global user.name "Github Actions"
+      - name: Run tests
+        run: |
+          source $HOME/.poetry/env
+          poetry run pytest
 
-        git add --all
-        git commit --message "Python 3.6 patch"
-        latest_tag=$(git describe --abbrev=0 --tags)
-        git tag --force ${latest_tag}
+      - name: Build wheels
+        run: |
+          source $HOME/.poetry/env
+          poetry version $(git tag --points-at HEAD)
+          poetry build
 
-    - name: Install dependencies
-      run: |
-        pip install -r requirements.txt
+      - name: Test install package
+        run: |
+          source $HOME/.poetry/env
+          mkdir test_install
+          cd test_install
+          poetry init
+          poetry add ../dist/$(ls dist/*.whl)
 
-    - name: Install dev dependencies
-      run: |
-        pip install -r dev_requirements.txt
+          poetry run python -c "import datastream"
 
-    - name: Test
-      run: |
-        pytest
-
-    - name: Test install package
-      env:
-        PYTHON_VERSION: ${{ matrix.python-version }}
-      run: |
-        python setup.py bdist_wheel --python-tag py${PYTHON_VERSION//.}
-
-    - name: Test install package
-      run: |
-        pip install virtualenv
-        virtualenv installable
-        source installable/bin/activate
-
-        pip install dist/$(ls dist)
-
-        mkdir test_install
-        cd test_install
-        python -c "import datastream"
-
-    - name: PyPi Publish
-      env:
-        TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
-      run:
-        twine upload dist/*
+      - name: Upload
+        env:
+          USERNAME: __token__
+          PASSWORD: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          source $HOME/.poetry/env
+          poetry publish --username=$USERNAME --password=$PASSWORD
