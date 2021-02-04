@@ -384,7 +384,16 @@ class Dataset(BaseModel, Generic[T]):
                 + ''.join([random.choice(string.ascii_lowercase) for _ in range(8)])
             )
 
-            new_dataframe = pd.concat([dataset.dataframe for dataset in datasets])
+            dataframes = [dataset.dataframe for dataset in datasets]
+            for dataframe in dataframes:
+                for col in dataframe.columns:
+                    if (
+                        dataframe[col].dtype == int
+                        and any([col not in other.columns for other in dataframes])
+                    ):
+                        dataframe[col] = dataframe[col].astype(object)
+
+            new_dataframe = pd.concat(dataframes)
             new_dataframe[dataset_column] = [
                 from_concat_mapping(index)[0]
                 for index in range(len(new_dataframe))
@@ -860,3 +869,19 @@ def test_update_stratified_split():
         )
 
         filepath.unlink()
+
+
+def test_concat_missing_columns():
+    dataset1 = Dataset.from_dataframe(
+        pd.DataFrame(dict(a=[1, 2, 3], b=['a', 'b', 'c']))
+    )
+    dataset2 = Dataset.from_dataframe(
+        pd.DataFrame(dict(c=[True, False], d=[[1, 2], [3, 4]]))
+    )
+    concatenated = Dataset.concat([dataset1, dataset2])
+
+    assert type(concatenated[0]['a']) == int
+    assert type(concatenated[-1]['a']) == float
+    assert type(concatenated[0]['b']) == str
+    assert type(concatenated[-1]['c']) == bool
+    assert type(concatenated[-1]['d']) == list
