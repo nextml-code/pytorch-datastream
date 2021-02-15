@@ -22,6 +22,7 @@ def unstratified_split(
             key_column,
             proportions,
             filepath=filepath,
+            seed=seed,
             frozen=frozen,
         ).items()
     }
