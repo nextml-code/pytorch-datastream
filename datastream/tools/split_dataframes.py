@@ -41,7 +41,7 @@ def split_dataframes(
             for split_name in proportions.keys()
         }
 
-    key_dataframe = pd.DataFrame({key_column: dataframe[key_column].unique()})
+    key_dataframe = pd.DataFrame({key_column: np.sort(dataframe[key_column].unique())})
 
     if frozen:
         if sum(map(len, split.values())) == 0:
