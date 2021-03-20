@@ -16,7 +16,7 @@ idna==2.9
 imagesize==1.2.0
 isort==4.3.21
 jeepney==0.4.3
-Jinja2==2.11.2
+Jinja2==2.11.3
 jsonpointer==2.0
 keyring==21.2.1
 lazy-object-proxy==1.4.3
