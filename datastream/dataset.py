@@ -1,7 +1,7 @@
 from __future__ import annotations
 from pydantic import BaseModel
 from typing import (
-    Tuple, Callable, Union, List, TypeVar, Generic, Dict, Optional
+    Tuple, Callable, Union, List, TypeVar, Generic, Dict, Optional, Iterable
 )
 from pathlib import Path
 from functools import lru_cache
@@ -89,9 +89,16 @@ class Dataset(BaseModel, Generic[T]):
             get_item=lambda df, index: df.iloc[index],
         )
 
-    def __getitem__(self: Dataset[T], index: int) -> T:
-        '''Get an example ``T`` from the ``Dataset[T]``'''
-        return self.get_item(self.dataframe, index)
+    def __getitem__(
+            self: Dataset[T],
+            select: Union[int, slice, Iterable, Callable[[pd.DataFrame], Iterable[int]]]
+    ) -> Union[T, Dataset[T]]:
+        '''Get selection from the ``Dataset[T]``'''
+        if np.issubdtype(type(select), np.integer):
+            return self.get_item(self.dataframe, select)
+        else:
+            dataframe = self.dataframe.iloc[select]
+            return self.replace(dataframe=dataframe, length=len(dataframe))
 
     def __len__(self):
         return self.length
@@ -198,27 +205,8 @@ class Dataset(BaseModel, Generic[T]):
         ... )[-1]
         2
         '''
-
-        mask = mask_fn(self.dataframe)
-        if isinstance(mask, list):
-            mask = np.array(mask)
-        elif isinstance(mask, pd.Series):
-            mask = mask.values
-
-        if len(mask.shape) != 1:
-            raise AssertionError('Expected single dimension in mask')
-
-        if len(mask) != len(self):
-            raise AssertionError(
-                'Expected mask to have the same length as the dataset'
-            )
-
-        indices = np.argwhere(mask).squeeze(1)
-        return Dataset(
-            dataframe=self.dataframe.iloc[indices],
-            length=len(indices),
-            get_item=self.get_item,
-        )
+        dataframe = self.dataframe[mask_fn(self.dataframe)]
+        return self.replace(dataframe=dataframe, length=len(dataframe))
 
     def split(
         self,
