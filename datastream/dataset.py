@@ -5,6 +5,7 @@ from typing import (
 )
 from pathlib import Path
 from functools import lru_cache
+from operator import itemgetter
 import string
 import random
 import textwrap
@@ -104,10 +105,18 @@ class Dataset(BaseModel, Generic[T]):
         return self.length
 
     def __str__(self):
-        return str('\n'.join(
-            [str(self[index]) for index in range(min(3, len(self)))]
-            + (['...'] if len(self) > 3 else [])
-        ))
+        sample_length = 3
+        sample = list(itemgetter(*range(min(sample_length, len(self)))))
+
+        content = '\n'.join(
+            list(map(
+                "    {}".format,
+                sample
+                + (['...'] if len(self) > len(sample) else [])
+            ))
+        )
+
+        return f"{self.__class__.__name__}(\n{content}\n)"
 
     def __repr__(self):
         return str(self)
