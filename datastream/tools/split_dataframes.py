@@ -58,7 +58,7 @@ def split_dataframes(
             )
 
         last_split_name, _ = split_proportions[-1]
-        split[last_split_name] += unassigned(dataframe[key_column], split)
+        split[last_split_name] += unassigned(key_dataframe[key_column], split)
 
         if filepath is not None:
             filepath.parent.mkdir(parents=True, exist_ok=True)
