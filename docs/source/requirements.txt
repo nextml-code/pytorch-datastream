@@ -9,7 +9,7 @@ certifi==2020.4.5.2
 cffi==1.14.0
 chardet==3.0.4
 commonmark==0.9.1
-cryptography>=3.2.0
+cryptography==3.4.7
 decorator==4.4.2
 docutils==0.16
 idna==2.9
@@ -30,10 +30,11 @@ pkginfo==1.5.0.1
 pluggy==0.13.1
 py==1.10.0
 pycparser==2.20
-pydantic==1.5.1
+pydantic==1.8.1
 Pygments==2.7.4
 pylint==2.5.3
 pyparsing==2.4.7
+pyspark==2.4.1
 pytest==5.4.3
 python-dateutil==2.8.1
 pytz==2020.1
@@ -46,7 +47,7 @@ SecretStorage==3.1.2
 six==1.15.0
 snowballstemmer==2.0.0
 soupsieve==2.0.1
-Sphinx==3.1.0
+Sphinx==3.5.4
 sphinx-jsonschema==1.15
 sphinx-pydantic==0.1.1
 sphinx-rtd-theme==0.4.3
@@ -57,9 +58,10 @@ sphinxcontrib-jsmath==1.0.1
 sphinxcontrib-qthelp==1.0.3
 sphinxcontrib-serializinghtml==1.1.4
 toml==0.10.1
-torch==1.4.0
+torch==1.8.1
 tqdm==4.46.1
 twine==3.1.1
+typing-extensions==3.10.0.0
 urllib3==1.25.9
 waitress==1.4.4
 wcwidth==0.2.4

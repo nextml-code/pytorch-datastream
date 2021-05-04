@@ -20,6 +20,7 @@ sampling, and finally converting to a ``torch.utils.data.DataLoader``.
    get_started
    dataset
    datastream
+   tools
 
 Indices and tables
 ==================
