@@ -4,6 +4,7 @@ from pathlib import Path
 import json
 import numpy as np
 import pandas as pd
+import warnings
 
 
 def split_dataframes(
@@ -46,6 +47,15 @@ def split_dataframes(
     if frozen:
         if sum(map(len, split.values())) == 0:
             raise ValueError('Frozen split is empty')
+        n_unassigned = (~key_dataframe[key_column].isin(sum(split.values(), []))).sum()
+        if n_unassigned > 0:
+            warnings.warn(
+                (
+                    f'Found {n_unassigned} unassigned examples when splitting the dataset.'
+                    ' The split is frozen so they will will be discarded'
+                ),
+                UserWarning,
+            )
     else:
         split_proportions = tuple(proportions.items())
 
