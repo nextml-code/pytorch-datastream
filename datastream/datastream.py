@@ -584,3 +584,29 @@ def test_last_batch():
         SequentialSampler(3),
     )
     assert list(map(len, datastream.data_loader(batch_size=2))) == [2, 1]
+
+
+def test_seeded_random_sampler():
+    dataset = Dataset.from_subscriptable(np.arange(100))
+    datastream = Datastream(dataset, sampler=StandardSampler(len(dataset), seed=1))
+
+    loader = datastream.data_loader(batch_size=1, collate_fn=tuple)
+    batches1 = [batch for batch in loader]
+    batches2 = [batch for batch in loader]
+    assert all(
+        batch1[0] == batch2[0]
+        for batch1, batch2 in zip(batches1, batches2)
+    )
+
+
+def test_unseeded_random_sampler():
+    dataset = Dataset.from_subscriptable(np.arange(100))
+    datastream = Datastream(dataset, sampler=StandardSampler(len(dataset)))
+
+    loader = datastream.data_loader(batch_size=1, collate_fn=tuple)
+    batches1 = [batch for batch in loader]
+    batches2 = [batch for batch in loader]
+    assert any(
+        batch1[0] != batch2[0]
+        for batch1, batch2 in zip(batches1, batches2)
+    )
