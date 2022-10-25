@@ -17,32 +17,37 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Install poetry
+        run: |
+          python -m pip install --upgrade pip
+          curl -sSL https://install.python-poetry.org | python - --version 1.2.2
+          echo "${HOME}/.local/bin" >> $GITHUB_PATH
+
       - name: Install dependencies
         run: |
-          curl -sSL https://install.python-poetry.org | python - --version 1.2.1
-          $HOME/.local/bin/poetry install --no-root
+          poetry install --no-root
 
       - name: Run tests
         run: |
-          $HOME/.local/bin/poetry run pytest
+          poetry run pytest
 
       - name: Build wheels
         run: |
-          $HOME/.local/bin/poetry version $(git tag --points-at HEAD)
-          $HOME/.local/bin/poetry build
+          poetry version $(git tag --points-at HEAD)
+          poetry build
 
       - name: Test install package
         run: |
           mkdir test_install
           cd test_install
-          $HOME/.local/bin/poetry init
-          $HOME/.local/bin/poetry add ../dist/$(ls dist/*.whl)
+          poetry init
+          poetry add ../dist/$(ls dist/*.whl)
 
-          $HOME/.local/bin/poetry run python -c "import datastream"
+          poetry run python -c "import datastream"
 
       - name: Upload
         env:
           USERNAME: __token__
           PASSWORD: ${{ secrets.PYPI_TOKEN }}
         run: |
-          $HOME/.local/bin/poetry publish --username=$USERNAME --password=$PASSWORD
+          poetry publish --username=$USERNAME --password=$PASSWORD

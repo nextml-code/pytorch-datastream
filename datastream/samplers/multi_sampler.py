@@ -28,7 +28,7 @@ class MultiSampler(BaseModel, torch.utils.data.Sampler):
             merged_samplers=MultiSampler.merge_samplers(
                 samplers,
                 [1 for _ in samplers],
-            )
+            ),
         )
 
     @staticmethod
@@ -50,10 +50,12 @@ class MultiSampler(BaseModel, torch.utils.data.Sampler):
             while True:
                 yield [next(iterable) for _ in range(n)]
 
-        index_batch = zip(*[
-            batch(repeat_map_chain(iter, sampler), n)
-            for sampler, n in zip(samplers, ns)
-        ])
+        index_batch = zip(
+            *[
+                batch(repeat_map_chain(iter, sampler), n)
+                for sampler, n in zip(samplers, ns)
+            ]
+        )
 
         return chain.from_iterable(chain.from_iterable(index_batch))
 
@@ -66,24 +68,17 @@ class MultiSampler(BaseModel, torch.utils.data.Sampler):
 
     def update_example_weight_(self, weights, index):
         for sampler, weight in zip(self.samplers, weights):
-            sampler.update_example_weight_(
-                weight, index
-            )
+            sampler.update_example_weight_(weight, index)
 
     def sample_proportion(self, proportion):
         return MultiSampler(
-            [
-                sampler.sample_proportion(proportion)
-                for sampler in self.samplers
-            ],
-            self.dataset
+            [sampler.sample_proportion(proportion) for sampler in self.samplers],
+            self.dataset,
         )
 
     def state_dict(self):
-        return dict(
-            samplers=[sampler.state_dict() for sampler in self.samplers]
-        )
+        return dict(samplers=[sampler.state_dict() for sampler in self.samplers])
 
     def load_state_dict(self, state_dict):
-        for sampler, state_dict in zip(self.samplers, state_dict['samplers']):
+        for sampler, state_dict in zip(self.samplers, state_dict["samplers"]):
             sampler.load_state_dict(state_dict)

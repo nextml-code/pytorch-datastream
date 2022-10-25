@@ -24,18 +24,23 @@ jobs:
             ${{ runner.os }}-pip-
             ${{ runner.os }}-
 
+      - name: Install poetry
+        run: |
+          python -m pip install --upgrade pip
+          curl -sSL https://install.python-poetry.org | python - --version 1.2.2
+          echo "${HOME}/.local/bin" >> $GITHUB_PATH
+
       - name: Install dependencies
         run: |
-          curl -sSL https://install.python-poetry.org | python - --version 1.2.1
-          $HOME/.local/bin/poetry install install
+          poetry install
 
       - name: Run tests
         run: |
-          $HOME/.local/bin/poetry install run pytest
+          poetry run pytest
 
       - name: Build wheels
         run: |
-          $HOME/.local/bin/poetry install build
+          poetry build
 
   build-docs:
     runs-on: ubuntu-latest

@@ -28,9 +28,7 @@ class MergeSampler(BaseModel, torch.utils.data.Sampler):
             ns=ns,
             length=MergeSampler.merged_samplers_length(samplers, ns),
             from_mapping=Dataset.create_from_concat_mapping(datasets),
-            merged_samplers=MergeSampler.merge_samplers(
-                samplers, datasets, ns
-            ),
+            merged_samplers=MergeSampler.merge_samplers(samplers, datasets, ns),
         )
 
     def __len__(self):
@@ -41,10 +39,7 @@ class MergeSampler(BaseModel, torch.utils.data.Sampler):
 
     @staticmethod
     def merged_samplers_length(samplers, ns):
-        return (
-            min([len(sampler) / n for sampler, n in zip(samplers, ns)])
-            * sum(ns)
-        )
+        return min([len(sampler) / n for sampler, n in zip(samplers, ns)]) * sum(ns)
 
     @staticmethod
     def merge_samplers(samplers, datasets, ns):
@@ -54,13 +49,18 @@ class MergeSampler(BaseModel, torch.utils.data.Sampler):
             while True:
                 yield [next(iterable) for _ in range(n)]
 
-        index_batch = zip(*[
-            batch(map(
-                partial(to_mapping, dataset_index),
-                repeat_map_chain(iter, sampler),
-            ), n)
-            for dataset_index, (sampler, n) in enumerate(zip(samplers, ns))
-        ])
+        index_batch = zip(
+            *[
+                batch(
+                    map(
+                        partial(to_mapping, dataset_index),
+                        repeat_map_chain(iter, sampler),
+                    ),
+                    n,
+                )
+                for dataset_index, (sampler, n) in enumerate(zip(samplers, ns))
+            ]
+        )
 
         return chain.from_iterable(chain.from_iterable(index_batch))
 
@@ -74,25 +74,18 @@ class MergeSampler(BaseModel, torch.utils.data.Sampler):
 
     def update_example_weight_(self, weight, index):
         dataset_index, inner_index = self.from_mapping(index)
-        self.samplers[dataset_index].update_example_weight_(
-            weight, inner_index
-        )
+        self.samplers[dataset_index].update_example_weight_(weight, inner_index)
 
     def sample_proportion(self, proportion):
         return MergeSampler(
-            [
-                sampler.sample_proportion(proportion)
-                for sampler in self.samplers
-            ],
+            [sampler.sample_proportion(proportion) for sampler in self.samplers],
             self.datasets,
             self.ns,
         )
 
     def state_dict(self):
-        return dict(
-            samplers=[sampler.state_dict() for sampler in self.samplers]
-        )
+        return dict(samplers=[sampler.state_dict() for sampler in self.samplers])
 
     def load_state_dict(self, state_dict):
-        for sampler, state_dict in zip(self.samplers, state_dict['samplers']):
+        for sampler, state_dict in zip(self.samplers, state_dict["samplers"]):
             sampler.load_state_dict(state_dict)
