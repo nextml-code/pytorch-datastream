@@ -14,16 +14,16 @@ class RepeatSampler(BaseModel, torch.utils.data.Sampler):
         arbitrary_types_allowed = True
 
     def __init__(self, sampler, length, epoch_bound=False):
-        '''
+        """
         Wrapper that repeats and limits length of sampling based on
         epoch length and batch size
-        '''
+        """
         BaseModel.__init__(
             self,
             sampler=sampler,
             length=length,
             epoch_bound=epoch_bound,
-            queue=iter(sampler)
+            queue=iter(sampler),
         )
 
     def __iter__(self):

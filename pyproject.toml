@@ -2,10 +2,10 @@
 name = "pytorch-datastream"
 version = "0.0.0"
 description = "Simple dataset to dataloader library for pytorch"
-authors = ["Aiwizo"]
+authors = ["NextML"]
 license = "Apache-2.0"
 readme = "README.rst"
-repository = "https://github.com/Aiwizo/pytorch-datastream"
+repository = "https://github.com/nextml-code/pytorch-datastream"
 documentation = "https://pytorch-datastream.readthedocs.io"
 keywords = [
     "pytorch",
@@ -34,16 +34,17 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.8"
 torch = "^1.4.0"
 numpy = "^1.17.0"
 pandas = "^1.0.5"
 pydantic = "^1.5.0"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 pylint = "^2.6.0"
 flake8 = "^3.8.4"
 pytest = "^6.1.2"
+black = "^22.10.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

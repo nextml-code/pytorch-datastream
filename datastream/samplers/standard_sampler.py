@@ -21,7 +21,7 @@ class StandardSampler(BaseModel, torch.utils.data.Sampler):
                 torch.ones(length).double(),
                 num_samples=int(max(1, min(length, length * proportion))),
                 replacement=replacement,
-            )
+            ),
         )
 
     def __len__(self):
@@ -41,7 +41,7 @@ class StandardSampler(BaseModel, torch.utils.data.Sampler):
         self.sampler.weights[:] = function(self.sampler.weights)
 
     def update_example_weight_(self, weight, index):
-        if hasattr(weight, 'item'):
+        if hasattr(weight, "item"):
             weight = weight.item()
 
         self.sampler.weights[index] = weight
@@ -59,4 +59,4 @@ class StandardSampler(BaseModel, torch.utils.data.Sampler):
         return dict(weights=self.sampler.weights)
 
     def load_state_dict(self, state_dict):
-        self.sampler.weights[:] = state_dict['weights']
+        self.sampler.weights[:] = state_dict["weights"]
