@@ -19,35 +19,30 @@ jobs:
 
       - name: Install dependencies
         run: |
-          curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python
-          source $HOME/.poetry/env
-          poetry install
+          curl -sSL https://install.python-poetry.org | python - --version 1.2.1
+          $HOME/.local/bin/poetry install --no-root
 
       - name: Run tests
         run: |
-          source $HOME/.poetry/env
-          poetry run pytest
+          $HOME/.local/bin/poetry run pytest
 
       - name: Build wheels
         run: |
-          source $HOME/.poetry/env
-          poetry version $(git tag --points-at HEAD)
-          poetry build
+          $HOME/.local/bin/poetry version $(git tag --points-at HEAD)
+          $HOME/.local/bin/poetry build
 
       - name: Test install package
         run: |
-          source $HOME/.poetry/env
           mkdir test_install
           cd test_install
-          poetry init
-          poetry add ../dist/$(ls dist/*.whl)
+          $HOME/.local/bin/poetry init
+          $HOME/.local/bin/poetry add ../dist/$(ls dist/*.whl)
 
-          poetry run python -c "import datastream"
+          $HOME/.local/bin/poetry run python -c "import datastream"
 
       - name: Upload
         env:
           USERNAME: __token__
           PASSWORD: ${{ secrets.PYPI_TOKEN }}
         run: |
-          source $HOME/.poetry/env
-          poetry publish --username=$USERNAME --password=$PASSWORD
+          $HOME/.local/bin/poetry publish --username=$USERNAME --password=$PASSWORD

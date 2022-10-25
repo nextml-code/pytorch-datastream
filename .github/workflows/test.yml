@@ -26,19 +26,16 @@ jobs:
 
       - name: Install dependencies
         run: |
-          curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python
-          source $HOME/.poetry/env
-          poetry install
+          curl -sSL https://install.python-poetry.org | python - --version 1.2.1
+          $HOME/.local/bin/poetry install install
 
       - name: Run tests
         run: |
-          source $HOME/.poetry/env
-          poetry run pytest
+          $HOME/.local/bin/poetry install run pytest
 
       - name: Build wheels
         run: |
-          source $HOME/.poetry/env
-          poetry build
+          $HOME/.local/bin/poetry install build
 
   build-docs:
     runs-on: ubuntu-latest

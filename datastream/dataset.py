@@ -89,6 +89,30 @@ class Dataset(BaseModel, Generic[T]):
             get_item=lambda df, index: df.iloc[index],
         )
 
+    @staticmethod
+    def from_paths(paths: Iterable[str, Path], pattern: str) -> Dataset[pd.Series]:
+        '''
+        Create ``Dataset`` from paths using regex pattern that extracts information
+        from the path itself.
+        :func:`Dataset.__getitem__` will return a row from the dataframe and
+        :func:`Dataset.map` should be given a function that takes a row from
+        the dataframe as input.
+
+        >>> image_paths = ["dataset/damage/1.png"]
+        >>> (
+        ...     Dataset.from_paths(image_paths, pattern=r".*/(?P<class_name>\w+)/(?P<index>\d+).png")
+        ...     .map(lambda row: row["class_name"])
+        ... )[-1]
+        'damage'
+        '''
+        paths = list(paths)
+        return Dataset.from_dataframe(
+            pd.Series(paths)
+            .astype(str)
+            .str.extract(pattern)
+            .assign(path=paths)
+        )
+
     def __getitem__(
             self: Dataset[T],
             select: Union[int, slice, Iterable, Callable[[pd.DataFrame], Iterable[int]]]
