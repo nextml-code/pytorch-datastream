@@ -50,9 +50,7 @@ class ZipSampler(BaseModel, torch.utils.data.Sampler):
     def weight(self, index):
         return [
             sampler.weight(inner_index)
-            for sampler, inner_index in zip(
-                self.samplers, self.from_mapping(index)
-            )
+            for sampler, inner_index in zip(self.samplers, self.from_mapping(index))
         ]
 
     def update_weights_(self, function):
@@ -61,24 +59,17 @@ class ZipSampler(BaseModel, torch.utils.data.Sampler):
 
     def update_example_weight_(self, weights, index):
         inner_indices = self.from_mapping(index)
-        for sampler, weight, inner_index in zip(
-            self.samplers, weights, inner_indices
-        ):
-            sampler.update_example_weight_(
-                weight, inner_index
-            )
+        for sampler, weight, inner_index in zip(self.samplers, weights, inner_indices):
+            sampler.update_example_weight_(weight, inner_index)
 
     def sample_proportion(self, proportion):
-        return ZipSampler([
-            sampler.sample_proportion(proportion)
-            for sampler in self.samplers
-        ])
-
-    def state_dict(self):
-        return dict(
-            samplers=[sampler.state_dict() for sampler in self.samplers]
+        return ZipSampler(
+            [sampler.sample_proportion(proportion) for sampler in self.samplers]
         )
 
+    def state_dict(self):
+        return dict(samplers=[sampler.state_dict() for sampler in self.samplers])
+
     def load_state_dict(self, state_dict):
-        for sampler, state_dict in zip(self.samplers, state_dict['samplers']):
+        for sampler, state_dict in zip(self.samplers, state_dict["samplers"]):
             sampler.load_state_dict(state_dict)

@@ -110,9 +110,3 @@ Install from source
 ===================
 
 .. pip install -e .
-
-To patch the code locally for `Python 3.6` run `patch-python3.6.sh`.
-
-.. code-block:: bash
-
-    $ ./patch-python3.6.sh

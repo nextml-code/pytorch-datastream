@@ -1,7 +1,15 @@
 from __future__ import annotations
 from pydantic import BaseModel
 from typing import (
-    Tuple, Callable, Union, List, TypeVar, Generic, Dict, Optional, Iterable
+    Tuple,
+    Callable,
+    Union,
+    List,
+    TypeVar,
+    Generic,
+    Dict,
+    Optional,
+    Iterable,
 )
 from pathlib import Path
 from functools import lru_cache
@@ -14,12 +22,12 @@ import pandas as pd
 from datastream import tools
 
 
-T = TypeVar('T')
-R = TypeVar('R')
+T = TypeVar("T")
+R = TypeVar("R")
 
 
 class Dataset(BaseModel, Generic[T]):
-    '''
+    """
     A ``Dataset[T]`` is a mapping that allows pipelining of functions in a
     readable syntax returning an example of type ``T``.
 
@@ -39,7 +47,7 @@ class Dataset(BaseModel, Generic[T]):
         ... )
         >>> dataset[2]
         ('banana', 28)
-    '''
+    """
 
     dataframe: Optional[pd.DataFrame]
     length: int
@@ -51,25 +59,22 @@ class Dataset(BaseModel, Generic[T]):
 
     @staticmethod
     def from_subscriptable(subscriptable) -> Dataset:
-        '''
+        """
         Create ``Dataset`` based on subscriptable i.e. implements
         ``__getitem__`` and ``__len__``.
 
         Should only be used for simple examples as a ``Dataset`` created with
         this method does not support methods that require a source dataframe
         like :func:`Dataset.split` and :func:`Dataset.subset`.
-        '''
+        """
 
-        return (
-            Dataset.from_dataframe(
-                pd.DataFrame(dict(index=range(len(subscriptable))))
-            )
-            .map(lambda row: subscriptable[row['index']])
-        )
+        return Dataset.from_dataframe(
+            pd.DataFrame(dict(index=range(len(subscriptable))))
+        ).map(lambda row: subscriptable[row["index"]])
 
     @staticmethod
     def from_dataframe(dataframe: pd.DataFrame) -> Dataset[pd.Series]:
-        '''
+        """
         Create ``Dataset`` based on ``pandas.DataFrame``.
         :func:`Dataset.__getitem__` will return a row from the dataframe and
         :func:`Dataset.map` should be given a function that takes a row from
@@ -82,7 +87,7 @@ class Dataset(BaseModel, Generic[T]):
         ...     .map(lambda row: row['number'] + 1)
         ... )[-1]
         4
-        '''
+        """
         return Dataset(
             dataframe=dataframe,
             length=len(dataframe),
@@ -91,7 +96,7 @@ class Dataset(BaseModel, Generic[T]):
 
     @staticmethod
     def from_paths(paths: Iterable[str, Path], pattern: str) -> Dataset[pd.Series]:
-        '''
+        """
         Create ``Dataset`` from paths using regex pattern that extracts information
         from the path itself.
         :func:`Dataset.__getitem__` will return a row from the dataframe and
@@ -104,20 +109,17 @@ class Dataset(BaseModel, Generic[T]):
         ...     .map(lambda row: row["class_name"])
         ... )[-1]
         'damage'
-        '''
+        """
         paths = list(paths)
         return Dataset.from_dataframe(
-            pd.Series(paths)
-            .astype(str)
-            .str.extract(pattern)
-            .assign(path=paths)
+            pd.Series(paths).astype(str).str.extract(pattern).assign(path=paths)
         )
 
     def __getitem__(
-            self: Dataset[T],
-            select: Union[int, slice, Iterable, Callable[[pd.DataFrame], Iterable[int]]]
+        self: Dataset[T],
+        select: Union[int, slice, Iterable, Callable[[pd.DataFrame], Iterable[int]]],
     ) -> Union[T, Dataset[T]]:
-        '''Get selection from the ``Dataset[T]``'''
+        """Get selection from the ``Dataset[T]``"""
         if np.issubdtype(type(select), np.integer):
             return self.get_item(self.dataframe, select)
         else:
@@ -128,10 +130,12 @@ class Dataset(BaseModel, Generic[T]):
         return self.length
 
     def __str__(self):
-        return str('\n'.join(
-            [str(self[index]) for index in range(min(3, len(self)))]
-            + (['...'] if len(self) > 3 else [])
-        ))
+        return str(
+            "\n".join(
+                [str(self[index]) for index in range(min(3, len(self)))]
+                + (["..."] if len(self) > 3 else [])
+            )
+        )
 
     def __repr__(self):
         return str(self)
@@ -154,10 +158,8 @@ class Dataset(BaseModel, Generic[T]):
         new_dict.update(**kwargs)
         return type(self)(**new_dict)
 
-    def map(
-        self: Dataset[T], function: Callable[[T], R]
-    ) -> Dataset[R]:
-        '''
+    def map(self: Dataset[T], function: Callable[[T], R]) -> Dataset[R]:
+        """
         Creates a new dataset with the function added to the dataset pipeline.
 
         >>> (
@@ -165,7 +167,7 @@ class Dataset(BaseModel, Generic[T]):
         ...     .map(lambda number: number + 1)
         ... )[-1]
         4
-        '''
+        """
 
         def composed_fn(dataframe, index):
             item = self.get_item(dataframe, index)
@@ -174,16 +176,20 @@ class Dataset(BaseModel, Generic[T]):
             except Exception as e:
                 item_text = textwrap.shorten(str(item), width=79)
 
-                raise Exception('\n'.join([
-                    repr(e),
-                    '',
-                    'Above exception originated from',
-                    f'module: {inspect.getmodule(function)}',
-                    'from mapped function:',
-                    inspect.getsource(function),
-                    'for item:',
-                    item_text,
-                ])).with_traceback(e.__traceback__)
+                raise Exception(
+                    "\n".join(
+                        [
+                            repr(e),
+                            "",
+                            "Above exception originated from",
+                            f"module: {inspect.getmodule(function)}",
+                            "from mapped function:",
+                            inspect.getsource(function),
+                            "for item:",
+                            item_text,
+                        ]
+                    )
+                ).with_traceback(e.__traceback__)
 
         return Dataset(
             dataframe=self.dataframe,
@@ -191,10 +197,8 @@ class Dataset(BaseModel, Generic[T]):
             get_item=composed_fn,
         )
 
-    def starmap(
-        self: Dataset[T], function: Callable[Union[..., R]]
-    ) -> Dataset[R]:
-        '''
+    def starmap(self: Dataset[T], function: Callable[Union[..., R]]) -> Dataset[R]:
+        """
         Creates a new dataset with the function added to the dataset pipeline.
         The dataset's pipeline should return an iterable that will be
         expanded as \\*args to the mapped function.
@@ -205,15 +209,13 @@ class Dataset(BaseModel, Generic[T]):
         ...     .starmap(lambda number, plus_one: number + plus_one)
         ... )[-1]
         7
-        '''
+        """
         return self.map(tools.star(function))
 
     def subset(
-        self, mask_fn: Callable[
-            [pd.DataFrame], Union[pd.Series, np.array, List[bool]]
-        ]
+        self, mask_fn: Callable[[pd.DataFrame], Union[pd.Series, np.array, List[bool]]]
     ) -> Dataset[T]:
-        '''
+        """
         Select a subset of the dataset using a function that receives the
         source dataframe as input and is expected to return a boolean mask.
 
@@ -228,7 +230,7 @@ class Dataset(BaseModel, Generic[T]):
         ...     .subset(lambda dataframe: dataframe['number'] <= 2)
         ... )[-1]
         2
-        '''
+        """
         dataframe = self.dataframe[mask_fn(self.dataframe)]
         return self.replace(dataframe=dataframe, length=len(dataframe))
 
@@ -241,7 +243,7 @@ class Dataset(BaseModel, Generic[T]):
         frozen: Optional[bool] = False,
         seed: Optional[int] = None,
     ) -> Dict[str, Dataset[T]]:
-        '''
+        """
         Split dataset into multiple parts. Optionally you can chose to stratify
         on a column in the source dataframe or save the split to a json file.
         If you are sure that the split strategy will not change then you can
@@ -270,7 +272,7 @@ class Dataset(BaseModel, Generic[T]):
         80
         >>> split_datasets['test'][0]
         3
-        '''
+        """
         if filepath is not None:
             filepath = Path(filepath)
             filepath.parent.mkdir(parents=True, exist_ok=True)
@@ -298,7 +300,7 @@ class Dataset(BaseModel, Generic[T]):
     def with_columns(
         self: Dataset[T], **kwargs: Callable[pd.Dataframe, pd.Series]
     ) -> Dataset[T]:
-        '''
+        """
         Append new column(s) to the :attr:`.Dataset.dataframe` by passing the
         new column names as keywords with functions that take the
         :attr:`.Dataset.dataframe` as input and return :func:`pandas.Series`.
@@ -309,9 +311,9 @@ class Dataset(BaseModel, Generic[T]):
         ...     .map(lambda row: row['twice'])
         ... )[-1]
         6
-        '''
+        """
         if len(set(kwargs.keys()) & set(self.dataframe.columns)) >= 1:
-            raise ValueError('Should not replace existing columns')
+            raise ValueError("Should not replace existing columns")
 
         dataframe = self.dataframe.assign(**kwargs)
         return Dataset(
@@ -321,7 +323,7 @@ class Dataset(BaseModel, Generic[T]):
         )
 
     def zip_index(self: Dataset[T]) -> Dataset[Tuple[T, int]]:
-        '''
+        """
         Zip the output with its index. The output of the pipeline will be
         a tuple ``(output, index)``.
 
@@ -330,7 +332,7 @@ class Dataset(BaseModel, Generic[T]):
         ...     .zip_index()
         ... )[0]
         (4, 0)
-        '''
+        """
         return Dataset(
             dataframe=self.dataframe,
             length=self.length,
@@ -352,6 +354,7 @@ class Dataset(BaseModel, Generic[T]):
                 inner_index = index - cumulative_lengths[dataset_index - 1]
 
             return dataset_index, inner_index
+
         return from_concat
 
     @staticmethod
@@ -365,18 +368,19 @@ class Dataset(BaseModel, Generic[T]):
                 index = inner_index + cumulative_lengths[dataset_index - 1]
 
             return index
+
         return to_concat
 
     @staticmethod
     def concat(datasets: List[Dataset]) -> Dataset[R]:
-        '''
+        """
         Concatenate multiple datasets together so that they behave like a
         single dataset.
 
         Consider using :func:`Datastream.merge` if you have
         multiple data sources instead as it allows you to control the number
         of samples from each source in the training batches.
-        '''
+        """
         from_concat_mapping = Dataset.create_from_concat_mapping(datasets)
 
         if any([dataset.dataframe is None for dataset in datasets]):
@@ -391,24 +395,21 @@ class Dataset(BaseModel, Generic[T]):
                 get_item=get_item,
             )
         else:
-            dataset_column = (
-                '__concat__'
-                + ''.join([random.choice(string.ascii_lowercase) for _ in range(8)])
+            dataset_column = "__concat__" + "".join(
+                [random.choice(string.ascii_lowercase) for _ in range(8)]
             )
 
             dataframes = [dataset.dataframe for dataset in datasets]
             for dataframe in dataframes:
                 for col in dataframe.columns:
-                    if (
-                        dataframe[col].dtype == int
-                        and any([col not in other.columns for other in dataframes])
+                    if dataframe[col].dtype == int and any(
+                        [col not in other.columns for other in dataframes]
                     ):
                         dataframe[col] = dataframe[col].astype(object)
 
             new_dataframe = pd.concat(dataframes)
             new_dataframe[dataset_column] = [
-                from_concat_mapping(index)[0]
-                for index in range(len(new_dataframe))
+                from_concat_mapping(index)[0] for index in range(len(new_dataframe))
             ]
 
             def get_item(dataframe, index):
@@ -436,6 +437,7 @@ class Dataset(BaseModel, Generic[T]):
                     )
                 ]
             )
+
         return from_combine
 
     @staticmethod
@@ -443,29 +445,30 @@ class Dataset(BaseModel, Generic[T]):
         cumprod_lengths = np.cumprod(list(map(len, datasets)))
 
         def to_concat(inner_indices):
-            return inner_indices[0] + sum([
-                inner_index * cumprod_lengths[i]
-                for i, inner_index in enumerate(inner_indices[1:])
-            ])
+            return inner_indices[0] + sum(
+                [
+                    inner_index * cumprod_lengths[i]
+                    for i, inner_index in enumerate(inner_indices[1:])
+                ]
+            )
+
         return to_concat
 
     @staticmethod
     def combine(datasets: List[Dataset]) -> Dataset[Tuple]:
-        '''
+        """
         Zip multiple datasets together so that all combinations of examples
         are possible (i.e. the product) creating tuples like
         ``(example1, example2, ...)``.
 
         The created dataset will not have a dataframe because combined
         datasets are often very long and it is expensive to enumerate them.
-        '''
+        """
         from_combine_mapping = Dataset.create_from_combine_mapping(datasets)
 
         def get_item(dataframe, index):
             indices = from_combine_mapping(index)
-            return tuple([
-                dataset[index] for dataset, index in zip(datasets, indices)
-            ])
+            return tuple([dataset[index] for dataset, index in zip(datasets, indices)])
 
         return Dataset(
             dataframe=None,
@@ -475,7 +478,7 @@ class Dataset(BaseModel, Generic[T]):
 
     @staticmethod
     def zip(datasets: List[Dataset]) -> Dataset[Tuple]:
-        '''
+        """
         Zip multiple datasets together so that examples with matching indices
         create tuples like ``(example1, example2, ...)``.
 
@@ -492,7 +495,7 @@ class Dataset(BaseModel, Generic[T]):
         ...     Dataset.from_subscriptable([4, 5, 6, 7]),
         ... ])[-1]
         (3, 6)
-        '''
+        """
         length = min(map(len, datasets))
         return (
             Dataset.from_dataframe(
@@ -503,26 +506,26 @@ class Dataset(BaseModel, Generic[T]):
                     ],
                     axis=1,
                     keys=[
-                        f'dataset{dataset_index}'
+                        f"dataset{dataset_index}"
                         for dataset_index in range(len(datasets))
                     ],
                 ).assign(_index=list(range(length)))
             )
-            .map(lambda row: row['_index'].iloc[0])
-            .map(lambda index: tuple(
-                dataset[index] for dataset in datasets
-            ))
+            .map(lambda row: row["_index"].iloc[0])
+            .map(lambda index: tuple(dataset[index] for dataset in datasets))
         )
 
     def cache(
         self,
         key_column: str,
     ):
-        '''Cache intermediate step in-memory based on key column.'''
-        key_mapping = dict(zip(
-            self.dataframe[key_column],
-            range(len(self)),
-        ))
+        """Cache intermediate step in-memory based on key column."""
+        key_mapping = dict(
+            zip(
+                self.dataframe[key_column],
+                range(len(self)),
+            )
+        )
 
         @lru_cache(maxsize=None)
         def only_key(key):
@@ -551,7 +554,7 @@ def test_subscript():
 
     for dataset in (
         Dataset.from_subscriptable(number_list),
-        Dataset.from_dataframe(number_df).map(lambda row: row['number'])
+        Dataset.from_dataframe(number_df).map(lambda row: row["number"]),
     ):
 
         assert dataset[-1] == number_list[-1]
@@ -570,61 +573,62 @@ def test_subset():
     assert dataset[0] == numbers[1]
 
     dataframe = pd.DataFrame(dict(number=numbers))
-    dataset = (
-        Dataset.from_dataframe(dataframe)
-        .subset(lambda df: df['number'] >= 12)
-    )
-    assert dataset[0]['number'] == numbers[2]
+    dataset = Dataset.from_dataframe(dataframe).subset(lambda df: df["number"] >= 12)
+    assert dataset[0]["number"] == numbers[2]
 
 
 def test_with_columns():
     from pytest import raises
 
     with raises(ValueError):
-        dataset = (
-            Dataset.from_dataframe(pd.DataFrame(dict(
-                key=np.arange(100),
-            )))
-            .with_columns(key=lambda df: df['key'] * 2)
-        )
+        dataset = Dataset.from_dataframe(
+            pd.DataFrame(
+                dict(
+                    key=np.arange(100),
+                )
+            )
+        ).with_columns(key=lambda df: df["key"] * 2)
 
 
 def test_concat_dataset():
-    dataset = Dataset.concat([
-        Dataset.from_subscriptable(list(range(5))),
-        Dataset.from_subscriptable(list(range(4))),
-    ])
+    dataset = Dataset.concat(
+        [
+            Dataset.from_subscriptable(list(range(5))),
+            Dataset.from_subscriptable(list(range(4))),
+        ]
+    )
 
     assert dataset[6] == 1
 
 
 def test_concat_heterogenous_datasets():
     dataset1 = Dataset.from_dataframe(
-        pd.DataFrame(dict(a=[1], b=['a'])).set_index('a'),
+        pd.DataFrame(dict(a=[1], b=["a"])).set_index("a"),
     )
     dataset2 = Dataset.from_dataframe(
-        pd.DataFrame(dict(a=[1], b=[1], c=[2])).set_index('a'),
+        pd.DataFrame(dict(a=[1], b=[1], c=[2])).set_index("a"),
     )
-    dataset = (
-        Dataset.concat([dataset1, dataset2])
-        .map(lambda row: row['b'])
+    dataset = Dataset.concat([dataset1, dataset2]).map(lambda row: row["b"])
+
+    assert list(dataset) == ["a", 1]
+
+    dataset_other_functions = Dataset.concat(
+        [
+            dataset1.map(lambda row: row["b"]),
+            dataset2.map(lambda row: row["c"]),
+        ]
     )
 
-    assert list(dataset) == ['a', 1]
-
-    dataset_other_functions = Dataset.concat([
-        dataset1.map(lambda row: row['b']),
-        dataset2.map(lambda row: row['c']),
-    ])
-
-    assert list(dataset_other_functions) == ['a', 2]
+    assert list(dataset_other_functions) == ["a", 2]
 
 
 def test_zip_dataset():
-    dataset = Dataset.zip([
-        Dataset.from_subscriptable(list(range(5))),
-        Dataset.from_subscriptable(list(range(4))),
-    ])
+    dataset = Dataset.zip(
+        [
+            Dataset.from_subscriptable(list(range(5))),
+            Dataset.from_subscriptable(list(range(4))),
+        ]
+    )
 
     assert dataset[3] == (3, 3)
 
@@ -657,13 +661,17 @@ def test_combine_dataset():
 
 
 def test_split_dataset():
-    dataset = Dataset.from_dataframe(pd.DataFrame(dict(
-        index=np.arange(100),
-        number=np.random.randn(100),
-        stratify=np.concatenate([np.ones(50), np.zeros(50)]),
-    ))).map(tuple)
+    dataset = Dataset.from_dataframe(
+        pd.DataFrame(
+            dict(
+                index=np.arange(100),
+                number=np.random.randn(100),
+                stratify=np.concatenate([np.ones(50), np.zeros(50)]),
+            )
+        )
+    ).map(tuple)
 
-    filepath = Path('test_split_dataset.json')
+    filepath = Path("test_split_dataset.json")
     proportions = dict(
         gradient=0.7,
         early_stopping=0.15,
@@ -671,30 +679,30 @@ def test_split_dataset():
     )
 
     kwargs = dict(
-        key_column='index',
+        key_column="index",
         proportions=proportions,
         filepath=filepath,
-        stratify_column='stratify',
+        stratify_column="stratify",
     )
 
     split_datasets1 = dataset.split(**kwargs)
     split_datasets2 = dataset.split(**kwargs)
     split_datasets3 = dataset.split(
-        key_column='index',
+        key_column="index",
         proportions=proportions,
-        stratify_column='stratify',
+        stratify_column="stratify",
         seed=100,
     )
     split_datasets4 = dataset.split(
-        key_column='index',
+        key_column="index",
         proportions=proportions,
-        stratify_column='stratify',
+        stratify_column="stratify",
         seed=100,
     )
     split_datasets5 = dataset.split(
-        key_column='index',
+        key_column="index",
         proportions=proportions,
-        stratify_column='stratify',
+        stratify_column="stratify",
         seed=800,
     )
     filepath.unlink()
@@ -706,12 +714,16 @@ def test_split_dataset():
 
 
 def test_group_split_dataset():
-    dataset = Dataset.from_dataframe(pd.DataFrame(dict(
-        group=np.arange(100) // 4,
-        number=np.random.randn(100),
-    ))).map(tuple)
+    dataset = Dataset.from_dataframe(
+        pd.DataFrame(
+            dict(
+                group=np.arange(100) // 4,
+                number=np.random.randn(100),
+            )
+        )
+    ).map(tuple)
 
-    filepath = Path('test_split_dataset.json')
+    filepath = Path("test_split_dataset.json")
     proportions = dict(
         gradient=0.7,
         early_stopping=0.15,
@@ -719,7 +731,7 @@ def test_group_split_dataset():
     )
 
     kwargs = dict(
-        key_column='group',
+        key_column="group",
         proportions=proportions,
         filepath=filepath,
     )
@@ -727,17 +739,17 @@ def test_group_split_dataset():
     split_datasets1 = dataset.split(**kwargs)
     split_datasets2 = dataset.split(**kwargs)
     split_datasets3 = dataset.split(
-        key_column='group',
+        key_column="group",
         proportions=proportions,
         seed=100,
     )
     split_datasets4 = dataset.split(
-        key_column='group',
+        key_column="group",
         proportions=proportions,
         seed=100,
     )
     split_datasets5 = dataset.split(
-        key_column='group',
+        key_column="group",
         proportions=proportions,
         seed=800,
     )
@@ -753,80 +765,93 @@ def test_group_split_dataset():
 def test_missing_stratify_column():
     from pytest import raises
 
-    dataset = Dataset.from_dataframe(pd.DataFrame(dict(
-        index=np.arange(100),
-        number=np.random.randn(100),
-    ))).map(tuple)
+    dataset = Dataset.from_dataframe(
+        pd.DataFrame(
+            dict(
+                index=np.arange(100),
+                number=np.random.randn(100),
+            )
+        )
+    ).map(tuple)
 
     with raises(KeyError):
         dataset.split(
-            key_column='index',
+            key_column="index",
             proportions=dict(train=0.8, test=0.2),
-            stratify_column='should_fail',
+            stratify_column="should_fail",
         )
 
 
 def test_split_proportions():
-    dataset = Dataset.from_dataframe(pd.DataFrame(dict(
-        index=np.arange(100),
-        number=np.random.randn(100),
-        stratify=np.arange(100) // 10,
-    ))).map(tuple)
+    dataset = Dataset.from_dataframe(
+        pd.DataFrame(
+            dict(
+                index=np.arange(100),
+                number=np.random.randn(100),
+                stratify=np.arange(100) // 10,
+            )
+        )
+    ).map(tuple)
 
     splits = dataset.split(
-        key_column='index',
+        key_column="index",
         proportions=dict(train=0.8, test=0.2),
-        stratify_column='stratify',
+        stratify_column="stratify",
     )
 
-    assert len(splits['train']) == 80
-    assert len(splits['test']) == 20
+    assert len(splits["train"]) == 80
+    assert len(splits["test"]) == 20
 
 
 def test_with_columns_split():
     dataset = (
-        Dataset.from_dataframe(pd.DataFrame(dict(
-            index=np.arange(100),
-            number=np.arange(100),
-        )))
+        Dataset.from_dataframe(
+            pd.DataFrame(
+                dict(
+                    index=np.arange(100),
+                    number=np.arange(100),
+                )
+            )
+        )
         .map(tuple)
-        .with_columns(split=lambda df: df['index'] * 2)
+        .with_columns(split=lambda df: df["index"] * 2)
     )
 
     splits = dataset.split(
-        key_column='index',
+        key_column="index",
         proportions=dict(train=0.8, test=0.2),
     )
 
-    assert splits['train'][0][0] * 2 == splits['train'][0][2]
+    assert splits["train"][0][0] * 2 == splits["train"][0][2]
 
 
 def test_split_filepath():
 
-    dataset = (
-        Dataset.from_dataframe(pd.DataFrame(dict(
-            index=np.arange(100),
-            number=np.random.randn(100),
-            stratify=np.arange(100) // 10,
-        )))
-        .map(tuple)
-    )
+    dataset = Dataset.from_dataframe(
+        pd.DataFrame(
+            dict(
+                index=np.arange(100),
+                number=np.random.randn(100),
+                stratify=np.arange(100) // 10,
+            )
+        )
+    ).map(tuple)
 
-    filepath = Path('tmp_test_split.json')
+    filepath = Path("tmp_test_split.json")
     splits1 = dataset.split(
-        key_column='index',
+        key_column="index",
         proportions=dict(train=0.8, test=0.2),
         filepath=filepath,
     )
 
     splits2 = dataset.split(
-        key_column='index',
+        key_column="index",
         proportions=dict(train=0.8, test=0.2),
         filepath=filepath,
     )
 
-    assert splits1['train'][0] == splits2['train'][0]
-    assert splits1['test'][0] == splits2['test'][0]
+    assert splits1["train"][0] == splits2["train"][0]
+    assert splits1["test"][0] == splits2["test"][0]
 
     filepath.unlink()
 
@@ -835,48 +860,44 @@ def test_update_stratified_split():
 
     for _ in range(5):
 
-        dataset = (
-            Dataset.from_dataframe(pd.DataFrame(dict(
-                index=np.arange(100),
-                number=np.random.randn(100),
-                stratify1=np.random.randint(0, 10, 100),
-                stratify2=np.random.randint(0, 10, 100),
-            )))
-            .map(tuple)
+        dataset = Dataset.from_dataframe(
+            pd.DataFrame(
+                dict(
+                    index=np.arange(100),
+                    number=np.random.randn(100),
+                    stratify1=np.random.randint(0, 10, 100),
+                    stratify2=np.random.randint(0, 10, 100),
+                )
+            )
+        ).map(tuple)
+
+        filepath = Path("tmp_test_split.json")
+
+        splits1 = dataset.subset(lambda df: df["index"] < 50).split(
+            key_column="index",
+            proportions=dict(train=0.8, test=0.2),
+            filepath=filepath,
+            stratify_column="stratify1",
         )
 
-        filepath = Path('tmp_test_split.json')
-
-        splits1 = (
-            dataset
-            .subset(lambda df: df['index'] < 50)
-            .split(
-                key_column='index',
-                proportions=dict(train=0.8, test=0.2),
-                filepath=filepath,
-                stratify_column='stratify1',
-            )
-        )
-
-        splits2 = (
-            dataset
-            .split(
-                key_column='index',
-                proportions=dict(train=0.8, test=0.2),
-                filepath=filepath,
-                stratify_column='stratify2',
-            )
+        splits2 = dataset.split(
+            key_column="index",
+            proportions=dict(train=0.8, test=0.2),
+            filepath=filepath,
+            stratify_column="stratify2",
         )
 
         assert (
-            splits1['train'].dataframe['index']
-            .isin(splits2['train'].dataframe['index'])
+            splits1["train"]
+            .dataframe["index"]
+            .isin(splits2["train"].dataframe["index"])
             .all()
         )
 
         assert (
-            splits1['test'].dataframe['index']
-            .isin(splits2['test'].dataframe['index'])
+            splits1["test"]
+            .dataframe["index"]
+            .isin(splits2["test"].dataframe["index"])
             .all()
         )
 
@@ -885,15 +906,15 @@ def test_update_stratified_split():
 
 def test_concat_missing_columns():
     dataset1 = Dataset.from_dataframe(
-        pd.DataFrame(dict(a=[1, 2, 3], b=['a', 'b', 'c']))
+        pd.DataFrame(dict(a=[1, 2, 3], b=["a", "b", "c"]))
     )
     dataset2 = Dataset.from_dataframe(
         pd.DataFrame(dict(c=[True, False], d=[[1, 2], [3, 4]]))
     )
     concatenated = Dataset.concat([dataset1, dataset2])
 
-    assert type(concatenated[0]['a']) == int
-    assert type(concatenated[-1]['a']) == float
-    assert type(concatenated[0]['b']) == str
-    assert type(concatenated[-1]['c']) == bool
-    assert type(concatenated[-1]['d']) == list
+    assert type(concatenated[0]["a"]) == int
+    assert type(concatenated[-1]["a"]) == float
+    assert type(concatenated[0]["b"]) == str
+    assert type(concatenated[-1]["c"]) == bool
+    assert type(concatenated[-1]["d"]) == list

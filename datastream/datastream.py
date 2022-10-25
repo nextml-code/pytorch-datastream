@@ -24,12 +24,12 @@ from datastream.samplers import (
 )
 
 
-T = TypeVar('T')
-R = TypeVar('R')
+T = TypeVar("T")
+R = TypeVar("R")
 
 
 class Datastream(BaseModel, Generic[T]):
-    '''
+    """
     ``Datastream[T]`` combines a ``Dataset[T]`` and a sampler into a stream of
     examples.
 
@@ -44,7 +44,7 @@ class Datastream(BaseModel, Generic[T]):
     ... )
     >>> len(next(iter(data_loader)))
     16
-    '''
+    """
 
     dataset: Dataset[T]
     sampler: Optional[torch.utils.data.Sampler]
@@ -53,21 +53,13 @@ class Datastream(BaseModel, Generic[T]):
         arbitrary_types_allowed = True
         allow_mutation = False
 
-    def __init__(
-        self,
-        dataset: Dataset[T],
-        sampler: torch.utils.data.Sampler = None
-    ):
+    def __init__(self, dataset: Dataset[T], sampler: torch.utils.data.Sampler = None):
         if len(dataset) == 0:
-            raise ValueError('Cannot create datastream from empty dataset')
+            raise ValueError("Cannot create datastream from empty dataset")
 
         super().__init__(
             dataset=dataset,
-            sampler=(
-                StandardSampler(len(dataset))
-                if sampler is None
-                else sampler
-            )
+            sampler=(StandardSampler(len(dataset)) if sampler is None else sampler),
         )
 
     def __len__(self):
@@ -77,11 +69,10 @@ class Datastream(BaseModel, Generic[T]):
         return map(self.dataset.__getitem__, iter(self.sampler))
 
     @staticmethod
-    def merge(datastreams_and_ns: Tuple[Union[
-        Datastream[T],
-        Tuple[Datastream[T], int]
-    ], ...]) -> Datastream[T]:
-        '''
+    def merge(
+        datastreams_and_ns: Tuple[Union[Datastream[T], Tuple[Datastream[T], int]], ...]
+    ) -> Datastream[T]:
+        """
         Creates a merged datastream where samples are drawn one at a time from
         each underlying datastream (also known as "interleave").
 
@@ -98,70 +89,69 @@ class Datastream(BaseModel, Generic[T]):
         ... ])
         >>> list(merged_datastream)
         [1, 2, 3, 3, 1, 2, 3, 3]
-        '''
+        """
         datastreams_and_ns = [
-            x if type(x) is tuple else (x, 1)
-            for x in datastreams_and_ns
+            x if type(x) is tuple else (x, 1) for x in datastreams_and_ns
         ]
 
         return Datastream(
-            Dataset.concat([
-                datastream.dataset for datastream, n in datastreams_and_ns
-            ]),
-            MergeSampler(*zip(*[
-                (datastream.sampler, datastream.dataset, n)
-                for (datastream, n) in datastreams_and_ns
-            ])),
+            Dataset.concat(
+                [datastream.dataset for datastream, n in datastreams_and_ns]
+            ),
+            MergeSampler(
+                *zip(
+                    *[
+                        (datastream.sampler, datastream.dataset, n)
+                        for (datastream, n) in datastreams_and_ns
+                    ]
+                )
+            ),
         )
 
     @staticmethod
     def zip(datastreams: List[Datastream]) -> Datastream[Tuple]:
-        '''
+        """
         Zip multiple datastreams together so that all combinations of examples
         are possible (i.e. the product) creating tuples like
         ``(example1, example2, ...)``. The samples are drawn independently
         from each underlying datastream.
-        '''
+        """
         return Datastream(
-            Dataset.combine([
-                datastream.dataset for datastream in datastreams
-            ]),
-            ZipSampler(*zip(*[
-                (datastream.sampler, datastream.dataset)
-                for datastream in datastreams
-            ])),
+            Dataset.combine([datastream.dataset for datastream in datastreams]),
+            ZipSampler(
+                *zip(
+                    *[
+                        (datastream.sampler, datastream.dataset)
+                        for datastream in datastreams
+                    ]
+                )
+            ),
         )
 
-    def map(
-        self: Datastream[T], function: Callable[[T], R]
-    ) -> Datastream[R]:
-        '''
+    def map(self: Datastream[T], function: Callable[[T], R]) -> Datastream[R]:
+        """
         Creates a new Datastream with a new mapped dataset. See
         :func:`Dataset.map` for details.
-        '''
+        """
         return Datastream(
             self.dataset.map(function),
             self.sampler,
         )
 
-    def starmap(
-        self: Datastream[T], function: Callable[[...], R]
-    ) -> Datastream[R]:
-        ''' 
+    def starmap(self: Datastream[T], function: Callable[[...], R]) -> Datastream[R]:
+        """
         Creates a new Datastream with a new starmapped dataset. See
         :func:`Dataset.starmap` for details.
-        '''
+        """
         return Datastream(
             self.dataset.starmap(function),
             self.sampler,
         )
 
     def data_loader(
-        self,
-        n_batches_per_epoch: int = None,
-        **kwargs
+        self, n_batches_per_epoch: int = None, **kwargs
     ) -> torch.utils.data.DataLoader:
-        '''
+        """
         Get ``torch.utils.data.DataLoader`` for use in pytorch pipeline.
 
         The argument ``n_batches_per_epoch`` overrides the underlying length
@@ -174,21 +164,19 @@ class Datastream(BaseModel, Generic[T]):
         ... )
         >>> list(data_loader)[0]
         tensor([5, 5, 5, 5, 5])
-        '''
+        """
         if n_batches_per_epoch is None:
             sampler = self.sampler
         else:
             sampler = RepeatSampler(
                 self.sampler,
-                n_batches_per_epoch * kwargs['batch_size'],
+                n_batches_per_epoch * kwargs["batch_size"],
             )
 
-        return torch.utils.data.DataLoader(
-            self.dataset, sampler=sampler, **kwargs
-        )
+        return torch.utils.data.DataLoader(self.dataset, sampler=sampler, **kwargs)
 
     def zip_index(self: Datastream[T]) -> Datastream[Tuple[T, int]]:
-        '''
+        """
         Zip the output with its underlying `Dataset` index. The output of the
         pipeline will be a tuple ``(output, index)``
 
@@ -196,29 +184,29 @@ class Datastream(BaseModel, Generic[T]):
         training since that requires the index of the example.
 
         See :func:`Dataset.zip_index` for more details.
-        '''
+        """
         return Datastream(
             self.dataset.zip_index(),
             self.sampler,
         )
 
     def weight(self, index: int) -> float:
-        '''Get sample weight for specific example.'''
+        """Get sample weight for specific example."""
         return self.sampler.weight(index)
 
     def update_weights_(self, function: Callable[[np.array], np.array]):
-        '''Update all sample weights by function **in-place**.'''
+        """Update all sample weights by function **in-place**."""
         self.sampler.update_weights_(function)
 
     def update_example_weight_(self, weight: Union[List, float], index: int):
-        '''Update sample weight for specific example **in-place**.'''
+        """Update sample weight for specific example **in-place**."""
         self.sampler.update_example_weight_(weight, index)
 
     def sample_proportion(
         self: Datastream[T],
         proportion: float,
     ) -> Datastream[T]:
-        '''
+        """
         Create new ``Datastream[T]`` with changed proportion. This changes the
         numbers of drawn samples before restarting sampling with new weights
         and allowing sample replacement.
@@ -227,7 +215,7 @@ class Datastream(BaseModel, Generic[T]):
         default is to sample without replacement with proportion 1.0 which will
         cause the weighting scheme to only affect the order in which the
         samples are drawn.
-        '''
+        """
         return Datastream(
             self.dataset,
             self.sampler.sample_proportion(proportion),
@@ -237,24 +225,24 @@ class Datastream(BaseModel, Generic[T]):
         self: Datastream[T],
         n_samples: PositiveInt,
     ) -> Datastream[T]:
-        '''
+        """
         Like :func:`Datastream.sample_proportion` but specify the number of
         samples instead of a proportion.
-        '''
+        """
         if n_samples < 1:
-            raise ValueError('n_samples must be greater than or equal to 1')
+            raise ValueError("n_samples must be greater than or equal to 1")
         return self.sample_proportion(n_samples / len(self))
 
     def state_dict(self) -> Dict:
-        '''Get state of datastream. Useful for checkpointing sample weights.'''
+        """Get state of datastream. Useful for checkpointing sample weights."""
         return dict(sampler=self.sampler.state_dict())
 
     def load_state_dict(self, state_dict: Dict):
-        '''Load saved state from :func:`Datastream.state_dict`.'''
-        return self.sampler.load_state_dict(state_dict['sampler'])
+        """Load saved state from :func:`Datastream.state_dict`."""
+        return self.sampler.load_state_dict(state_dict["sampler"])
 
     def multi_sample(self: Datastream[T], n: int) -> Datastream[T]:
-        '''
+        """
         Split datastream into clones with different sample weights and then
         merge them. The weights when accessed will be a sequence of multiple
         weights.
@@ -280,7 +268,7 @@ class Datastream(BaseModel, Generic[T]):
                 for index in indices:
                     datastream.update_weight(index, predicted_classes)
 
-        '''
+        """
         return Datastream(
             self.dataset,
             MultiSampler.from_number(n, self.dataset),
@@ -290,7 +278,7 @@ class Datastream(BaseModel, Generic[T]):
         self,
         key_column: str,
     ):
-        '''Cache dataset in-memory. See :func:`Dataset.cache` for details.'''
+        """Cache dataset in-memory. See :func:`Dataset.cache` for details."""
         return Datastream(
             self.dataset.cache(key_column),
             self.sampler,
@@ -299,7 +287,7 @@ class Datastream(BaseModel, Generic[T]):
 
 def test_infinite():
 
-    datastream = Datastream(Dataset.from_subscriptable(list('abc')))
+    datastream = Datastream(Dataset.from_subscriptable(list("abc")))
     it = iter(datastream.data_loader(batch_size=8, n_batches_per_epoch=10))
     for _ in range(10):
         batch = next(it)
@@ -307,7 +295,7 @@ def test_infinite():
 
 def test_iter():
 
-    datastream = Datastream(Dataset.from_subscriptable(list('abc')))
+    datastream = Datastream(Dataset.from_subscriptable(list("abc")))
     assert len(list(datastream)) == 3
 
 
@@ -321,10 +309,12 @@ def test_empty():
 
 def test_datastream_merge():
 
-    datastream = Datastream.merge([
-        Datastream(Dataset.from_subscriptable(list('abc'))),
-        Datastream(Dataset.from_subscriptable(list('def'))),
-    ])
+    datastream = Datastream.merge(
+        [
+            Datastream(Dataset.from_subscriptable(list("abc"))),
+            Datastream(Dataset.from_subscriptable(list("def"))),
+        ]
+    )
 
     it = iter(datastream.sampler)
     for _ in range(2):
@@ -334,11 +324,7 @@ def test_datastream_merge():
     for _ in range(10):
         batch = next(it)
 
-    assert (
-        len(list(
-            datastream.data_loader(batch_size=1)
-        )) == len(datastream)
-    )
+    assert len(list(datastream.data_loader(batch_size=1))) == len(datastream)
 
 
 def test_datastream_zip():
@@ -361,23 +347,21 @@ def test_datastream_zip():
     assert batch[1][0] == 3 and batch[1][1] == 4 and batch[1][2] == 5
     assert batch[2][0] == 6 and batch[2][1] == 7 and batch[2][2] == 6
 
-    assert (
-        len(list(
-            zipped_datastream.data_loader(batch_size=1)
-        )) == len(zipped_datastream)
+    assert len(list(zipped_datastream.data_loader(batch_size=1))) == len(
+        zipped_datastream
     )
 
 
 def test_datastream_merge_zip_merge():
-    '''
+    """
     Repeating because it only sometimes recreated an error that occured
     when using mixup/mixmatch
-    '''
+    """
 
     def RandomDatastream():
-        return Datastream(Dataset.from_subscriptable(
-            list(range(np.random.randint(1, 10)))
-        ))
+        return Datastream(
+            Dataset.from_subscriptable(list(range(np.random.randint(1, 10))))
+        )
 
     def MergedDatastream():
         return Datastream.merge([RandomDatastream(), RandomDatastream()])
@@ -386,15 +370,15 @@ def test_datastream_merge_zip_merge():
         return Datastream.zip([MergedDatastream(), MergedDatastream()])
 
     for attempt in range(10):
-        print('attempt:', attempt)
-        datastream = Datastream.merge([
-            (ZippedMergedDatastream(), 1),
-            (ZippedMergedDatastream(), 5),
-        ])
+        print("attempt:", attempt)
+        datastream = Datastream.merge(
+            [
+                (ZippedMergedDatastream(), 1),
+                (ZippedMergedDatastream(), 5),
+            ]
+        )
 
-        it = iter(datastream.data_loader(
-            batch_size=16, n_batches_per_epoch=10
-        ))
+        it = iter(datastream.data_loader(batch_size=16, n_batches_per_epoch=10))
         for _ in range(10):
             print(next(it))
 
@@ -405,10 +389,12 @@ def test_datastream_simple_weights():
     datastream = (
         Datastream(dataset)
         .zip_index()
-        .starmap(lambda integer, index: dict(
-            integer=integer,
-            index=index,
-        ))
+        .starmap(
+            lambda integer, index: dict(
+                integer=integer,
+                index=index,
+            )
+        )
         .sample_proportion(0.5)
     )
 
@@ -421,10 +407,8 @@ def test_datastream_simple_weights():
     assert len(samples) == 2
 
     for sample in samples:
-        if sample['index'] in removed_indices:
-            raise AssertionError(
-                'Samples with 0 weight were drawn from the dataset'
-            )
+        if sample["index"] in removed_indices:
+            raise AssertionError("Samples with 0 weight were drawn from the dataset")
 
 
 def test_merge_datastream_weights():
@@ -436,15 +420,14 @@ def test_merge_datastream_weights():
     ]
 
     datastream = (
-        Datastream.merge([
-            Datastream(dataset)
-            for dataset in datasets
-        ])
+        Datastream.merge([Datastream(dataset) for dataset in datasets])
         .zip_index()
-        .starmap(lambda integer, index: dict(
-            integer=integer,
-            index=index,
-        ))
+        .starmap(
+            lambda integer, index: dict(
+                integer=integer,
+                index=index,
+            )
+        )
         .sample_proportion(0.5)
     )
 
@@ -463,20 +446,15 @@ def test_multi_sample():
     n_multi_sample = 2
 
     datastream = (
-        Datastream(
-            Dataset.from_subscriptable(data)
-        )
-        .map(lambda number: number ** 2)
+        Datastream(Dataset.from_subscriptable(data))
+        .map(lambda number: number**2)
         .multi_sample(n_multi_sample)
         .sample_proportion(0.5)
         .zip_index()
-        .starmap(lambda number, index: (number ** 0.5, index))
+        .starmap(lambda number, index: (number**0.5, index))
     )
 
-    output = [
-        (number, index)
-        for number, index in datastream.data_loader(batch_size=1)
-    ]
+    output = [(number, index) for number, index in datastream.data_loader(batch_size=1)]
     assert len(output) == len(data) * n_multi_sample
     print(output)
 
@@ -487,8 +465,7 @@ def test_multi_sample():
         datastream.update_example_weight_(index, 0)
 
     output2 = [
-        (number, index)
-        for number, index in datastream.data_loader(batch_size=1)
+        (number, index) for number, index in datastream.data_loader(batch_size=1)
     ]
     assert len(output2) == len(data) * n_multi_sample
 
@@ -501,16 +478,18 @@ def test_take():
 
     import pytest
 
-    datastream = Datastream(Dataset.from_subscriptable(list('abc'))).take(2)
+    datastream = Datastream(Dataset.from_subscriptable(list("abc"))).take(2)
     assert len(list(datastream.data_loader(batch_size=1))) == 2
 
     with pytest.raises(ValueError):
-        Datastream(Dataset.from_subscriptable(list('abc'))).take(0)
+        Datastream(Dataset.from_subscriptable(list("abc"))).take(0)
 
-    datastream = Datastream.merge([
-        Datastream(Dataset.from_subscriptable(list('abc'))),
-        Datastream(Dataset.from_subscriptable(list('d'))),
-    ])
+    datastream = Datastream.merge(
+        [
+            Datastream(Dataset.from_subscriptable(list("abc"))),
+            Datastream(Dataset.from_subscriptable(list("d"))),
+        ]
+    )
     assert len(list(datastream.take(2).data_loader(batch_size=1))) == 2
 
 
@@ -518,54 +497,68 @@ def test_sequential_sampler():
 
     from datastream.samplers import SequentialSampler
 
-    dataset = Dataset.from_subscriptable(list('abc'))
+    dataset = Dataset.from_subscriptable(list("abc"))
     datastream = Datastream(dataset, SequentialSampler(len(dataset))).take(2)
     assert len(list(datastream.data_loader(batch_size=1))) == 2
 
     datastream = Datastream(dataset, SequentialSampler(len(dataset)))
     it = iter(datastream.data_loader(batch_size=6, n_batches_per_epoch=10))
-    assert next(it) == ['a', 'b', 'c', 'a', 'b', 'c']
+    assert next(it) == ["a", "b", "c", "a", "b", "c"]
 
 
 def test_concat_merge():
-    dataset = Dataset.concat([
-        Dataset.from_subscriptable([1, 2]),
-        Dataset.from_subscriptable([1, 3, 5]),
-    ])
+    dataset = Dataset.concat(
+        [
+            Dataset.from_subscriptable([1, 2]),
+            Dataset.from_subscriptable([1, 3, 5]),
+        ]
+    )
 
-    datastream = Datastream.merge([
-        Datastream(dataset),
-        Datastream(dataset.subset(
-            lambda df: [index < 3 for index in range(len(df))]
-        )),
-    ])
+    datastream = Datastream.merge(
+        [
+            Datastream(dataset),
+            Datastream(
+                dataset.subset(lambda df: [index < 3 for index in range(len(df))])
+            ),
+        ]
+    )
 
-    assert len(dataset.subset(
-        lambda df: [index < 3 for index in range(len(df))]
-    )) == 3
+    assert len(dataset.subset(lambda df: [index < 3 for index in range(len(df))])) == 3
 
     assert len(list(datastream)) == 6
 
 
 def test_combine_concat_merge():
-    dataset = Dataset.concat([
-        Dataset.zip([
-            Dataset.from_subscriptable([1]),
-            Dataset.from_subscriptable([2]),
-        ]),
-        Dataset.combine([
-            Dataset.from_subscriptable([3, 3]),
-            Dataset.from_subscriptable([4, 4, 4]),
-        ]),
-    ])
+    dataset = Dataset.concat(
+        [
+            Dataset.zip(
+                [
+                    Dataset.from_subscriptable([1]),
+                    Dataset.from_subscriptable([2]),
+                ]
+            ),
+            Dataset.combine(
+                [
+                    Dataset.from_subscriptable([3, 3]),
+                    Dataset.from_subscriptable([4, 4, 4]),
+                ]
+            ),
+        ]
+    )
 
-    datastream = Datastream.merge([
-        Datastream(dataset),
-        Datastream(Dataset.zip([
-            Dataset.from_subscriptable([5]),
-            Dataset.from_subscriptable([6]),
-        ])),
-    ])
+    datastream = Datastream.merge(
+        [
+            Datastream(dataset),
+            Datastream(
+                Dataset.zip(
+                    [
+                        Dataset.from_subscriptable([5]),
+                        Dataset.from_subscriptable([6]),
+                    ]
+                )
+            ),
+        ]
+    )
 
     assert len(list(datastream)) == 2
 
@@ -573,14 +566,14 @@ def test_combine_concat_merge():
 def test_last_batch():
     from datastream.samplers import SequentialSampler
 
-    datastream = Datastream(
-        Dataset.from_subscriptable(list('abc'))
-    )
+    datastream = Datastream(Dataset.from_subscriptable(list("abc")))
     assert list(map(len, datastream.data_loader(batch_size=4))) == [3]
-    assert list(map(len, datastream.data_loader(batch_size=4, n_batches_per_epoch=2))) == [4, 4]
+    assert list(
+        map(len, datastream.data_loader(batch_size=4, n_batches_per_epoch=2))
+    ) == [4, 4]
 
     datastream = Datastream(
-        Dataset.from_subscriptable(list('abc')),
+        Dataset.from_subscriptable(list("abc")),
         SequentialSampler(3),
     )
     assert list(map(len, datastream.data_loader(batch_size=2))) == [2, 1]

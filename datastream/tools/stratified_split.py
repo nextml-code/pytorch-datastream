@@ -13,19 +13,14 @@ def stratified_split(
     seed: Optional[int] = None,
     frozen: Optional[bool] = False,
 ):
-    if (
-        stratify_column is not None
-        and any(dataset.dataframe[key_column].duplicated())
-    ):
+    if stratify_column is not None and any(dataset.dataframe[key_column].duplicated()):
         # mathematically impossible in the general case
         warnings.warn(
-            'Trying to do stratified split with non-unique key column'
-            ' - cannot guarantee correct splitting of key values.'
+            "Trying to do stratified split with non-unique key column"
+            " - cannot guarantee correct splitting of key values."
         )
     strata = {
-        stratum_value: dataset.subset(
-            lambda df: df[stratify_column] == stratum_value
-        )
+        stratum_value: dataset.subset(lambda df: df[stratify_column] == stratum_value)
         for stratum_value in dataset.dataframe[stratify_column].unique()
     }
     split_strata = [
