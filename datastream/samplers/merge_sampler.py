@@ -1,11 +1,14 @@
 from __future__ import annotations
-from pydantic import BaseModel
-from typing import Tuple, Callable, Iterable
+
 from functools import partial
 from itertools import chain, islice
+from typing import Callable, Iterable, Tuple
+
 import torch
-from datastream.tools import repeat_map_chain
+from pydantic import BaseModel
+
 from datastream import Dataset
+from datastream.tools import repeat_map_chain
 
 
 class MergeSampler(BaseModel, torch.utils.data.Sampler):
@@ -39,7 +42,9 @@ class MergeSampler(BaseModel, torch.utils.data.Sampler):
 
     @staticmethod
     def merged_samplers_length(samplers, ns):
-        return min([len(sampler) / n for sampler, n in zip(samplers, ns)]) * sum(ns)
+        return int(
+            min([len(sampler) / n for sampler, n in zip(samplers, ns)]) * sum(ns)
+        )
 
     @staticmethod
     def merge_samplers(samplers, datasets, ns):

@@ -1,28 +1,19 @@
 from __future__ import annotations
-from pydantic import BaseModel, PositiveInt
-from typing import (
-    Tuple,
-    Dict,
-    List,
-    Callable,
-    Optional,
-    TypeVar,
-    Generic,
-    Union,
-)
+
+from typing import Callable, Dict, Generic, List, Optional, Tuple, TypeVar, Union
+
 import numpy as np
 import torch
-from pathlib import Path
+from pydantic import BaseModel, PositiveInt
 
 from datastream import Dataset
 from datastream.samplers import (
-    StandardSampler,
     MergeSampler,
-    ZipSampler,
     MultiSampler,
     RepeatSampler,
+    StandardSampler,
+    ZipSampler,
 )
-
 
 T = TypeVar("T")
 R = TypeVar("R")
@@ -46,7 +37,7 @@ class Datastream(BaseModel, Generic[T]):
     16
     """
 
-    dataset: Dataset[T]
+    dataset: Dataset
     sampler: Optional[torch.utils.data.Sampler]
 
     class Config:
@@ -286,7 +277,6 @@ class Datastream(BaseModel, Generic[T]):
 
 
 def test_infinite():
-
     datastream = Datastream(Dataset.from_subscriptable(list("abc")))
     it = iter(datastream.data_loader(batch_size=8, n_batches_per_epoch=10))
     for _ in range(10):
@@ -294,13 +284,11 @@ def test_infinite():
 
 
 def test_iter():
-
     datastream = Datastream(Dataset.from_subscriptable(list("abc")))
     assert len(list(datastream)) == 3
 
 
 def test_empty():
-
     import pytest
 
     with pytest.raises(ValueError):
@@ -308,7 +296,6 @@ def test_empty():
 
 
 def test_datastream_merge():
-
     datastream = Datastream.merge(
         [
             Datastream(Dataset.from_subscriptable(list("abc"))),
@@ -328,7 +315,6 @@ def test_datastream_merge():
 
 
 def test_datastream_zip():
-
     datasets = [
         Dataset.from_subscriptable([1, 2]),
         Dataset.from_subscriptable([3, 4, 5]),
@@ -384,7 +370,6 @@ def test_datastream_merge_zip_merge():
 
 
 def test_datastream_simple_weights():
-
     dataset = Dataset.from_subscriptable([1, 2, 3, 4])
     datastream = (
         Datastream(dataset)
@@ -412,7 +397,6 @@ def test_datastream_simple_weights():
 
 
 def test_merge_datastream_weights():
-
     datasets = [
         Dataset.from_subscriptable([1, 2]),
         Dataset.from_subscriptable([3, 4, 5]),
@@ -441,7 +425,6 @@ def test_merge_datastream_weights():
 
 
 def test_multi_sample():
-
     data = [1, 2, 4]
     n_multi_sample = 2
 
@@ -475,7 +458,6 @@ def test_multi_sample():
 
 
 def test_take():
-
     import pytest
 
     datastream = Datastream(Dataset.from_subscriptable(list("abc"))).take(2)
@@ -494,7 +476,6 @@ def test_take():
 
 
 def test_sequential_sampler():
-
     from datastream.samplers import SequentialSampler
 
     dataset = Dataset.from_subscriptable(list("abc"))
