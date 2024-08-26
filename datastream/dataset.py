@@ -200,7 +200,7 @@ class Dataset(BaseModel, Generic[T]):
             get_item=composed_fn,
         )
 
-    def starmap(self: Dataset[T], function: Callable[Union[..., R]]) -> Dataset[R]:
+    def starmap(self: Dataset[T], function: Callable[..., R]) -> Dataset[R]:
         """
         Creates a new dataset with the function added to the dataset pipeline.
         The dataset's pipeline should return an iterable that will be
