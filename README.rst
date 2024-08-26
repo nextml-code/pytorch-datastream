@@ -28,6 +28,7 @@ tensorflow 2's ``tf.data.Dataset``.
 It provides a simple solution to oversampling / stratification, weighted
 sampling, and finally converting to a ``torch.utils.data.DataLoader``.
 
+
 Install
 =======
 
@@ -40,6 +41,7 @@ Or, for the old-timers:
 .. code-block::
 
     pip install pytorch-datastream
+
 
 Usage
 =====
@@ -72,6 +74,43 @@ a more extensive list on API and usage.
         .state_dict
         .load_state_dict
 
+
+Simple image dataset example
+----------------------------
+Here's a basic example of loading images from a directory:
+
+.. code-block:: python
+
+    from datastream import Dataset
+    from pathlib import Path
+    from PIL import Image
+
+    # Assuming images are in a directory structure like:
+    # images/
+    #   class1/
+    #     image1.jpg
+    #     image2.jpg
+    #   class2/
+    #     image3.jpg
+    #     image4.jpg
+
+    image_dir = Path("images")
+    image_paths = list(image_dir.glob("**/*.jpg"))
+
+    dataset = (
+        Dataset.from_paths(image_paths, pattern=r".*/(?P<class_name>\w+)/(?P<image_name>\w+).jpg")
+        .map(lambda row: dict(
+            image=Image.open(row["path"]),
+            class_name=row["class_name"],
+            image_name=row["image_name"],
+        ))
+    )
+
+    # Access an item from the dataset
+    first_item = dataset[0]
+    print(f"Class: {first_item['class_name']}, Image name: {first_item['image_name']}")
+
+
 Merge / stratify / oversample datastreams
 -----------------------------------------
 The fruit datastreams given below repeatedly yields the string of its fruit
@@ -87,6 +126,7 @@ type.
     >>> next(iter(datastream.data_loader(batch_size=8)))
     ['apple', 'apple', 'pear', 'banana', 'apple', 'apple', 'pear', 'banana']
 
+
 Zip independently sampled datastreams
 -------------------------------------
 The fruit datastreams given below repeatedly yields the string of its fruit
@@ -101,12 +141,8 @@ type.
     >>> next(iter(datastream.data_loader(batch_size=4)))
     [('apple', 'pear'), ('apple', 'banana'), ('apple', 'pear'), ('apple', 'banana')]
 
+
 More usage examples
 -------------------
 See the `documentation <https://pytorch-datastream.readthedocs.io/en/latest/>`_
 for more usage examples.
-
-Install from source
-===================
-
-.. pip install -e .
