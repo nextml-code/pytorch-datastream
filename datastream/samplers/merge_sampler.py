@@ -5,7 +5,8 @@ from itertools import chain, islice
 from typing import Callable, Iterable, Tuple
 
 import torch
-from pydantic import BaseModel
+import torch.utils.data
+from pydantic import BaseModel, ConfigDict
 
 from datastream import Dataset
 from datastream.tools import repeat_map_chain
@@ -19,9 +20,10 @@ class MergeSampler(BaseModel, torch.utils.data.Sampler):
     from_mapping: Callable[[int], Tuple[int, int]]
     merged_samplers: Iterable
 
-    class Config:
-        arbitrary_types_allowed = True
-        allow_mutation = False
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        frozen=True,
+    )
 
     def __init__(self, samplers, datasets, ns):
         BaseModel.__init__(

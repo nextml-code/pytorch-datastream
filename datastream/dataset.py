@@ -1,26 +1,28 @@
 from __future__ import annotations
-from pydantic import BaseModel
-from typing import (
-    Tuple,
-    Callable,
-    Union,
-    List,
-    TypeVar,
-    Generic,
-    Dict,
-    Optional,
-    Iterable,
-)
-from pathlib import Path
-from functools import lru_cache
-import string
-import random
-import textwrap
+
 import inspect
+import random
+import string
+import textwrap
+from functools import lru_cache
+from pathlib import Path
+from typing import (
+    Callable,
+    Dict,
+    Generic,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    TypeVar,
+    Union,
+)
+
 import numpy as np
 import pandas as pd
-from datastream import tools
+from pydantic import BaseModel, ConfigDict
 
+from datastream import tools
 
 T = TypeVar("T")
 R = TypeVar("R")
@@ -53,9 +55,10 @@ class Dataset(BaseModel, Generic[T]):
     length: int
     get_item: Callable[[pd.DataFrame, int], T]
 
-    class Config:
-        arbitrary_types_allowed = True
-        allow_mutation = False
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        frozen=True,
+    )
 
     @staticmethod
     def from_subscriptable(subscriptable) -> Dataset:
@@ -96,7 +99,7 @@ class Dataset(BaseModel, Generic[T]):
 
     @staticmethod
     def from_paths(paths: Iterable[str, Path], pattern: str) -> Dataset[pd.Series]:
-        """
+        r"""
         Create ``Dataset`` from paths using regex pattern that extracts information
         from the path itself.
         :func:`Dataset.__getitem__` will return a row from the dataframe and
@@ -154,7 +157,7 @@ class Dataset(BaseModel, Generic[T]):
         return True
 
     def replace(self, **kwargs):
-        new_dict = self.dict()
+        new_dict = self.model_dump()
         new_dict.update(**kwargs)
         return type(self)(**new_dict)
 

@@ -1,11 +1,15 @@
 from __future__ import annotations
-from pydantic import BaseModel
-from typing import Tuple, Callable, Iterable
+
 from functools import partial
 from itertools import islice
+from typing import Callable, Iterable, Tuple
+
 import torch
-from datastream.tools import starcompose, repeat_map_chain
+import torch.utils.data
+from pydantic import BaseModel, ConfigDict
+
 from datastream import Dataset
+from datastream.tools import repeat_map_chain, starcompose
 
 
 class ZipSampler(BaseModel, torch.utils.data.Sampler):
@@ -15,9 +19,10 @@ class ZipSampler(BaseModel, torch.utils.data.Sampler):
     from_mapping: Callable[[int], Tuple[int, ...]]
     zipped_samplers: Iterable
 
-    class Config:
-        arbitrary_types_allowed = True
-        allow_mutation = False
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        frozen=True,
+    )
 
     def __init__(self, samplers, datasets):
         BaseModel.__init__(

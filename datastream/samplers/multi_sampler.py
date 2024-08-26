@@ -1,11 +1,14 @@
 from __future__ import annotations
-from pydantic import BaseModel
-from typing import Tuple, Iterable
+
 from itertools import chain, islice
+from typing import Iterable, Tuple
+
 import torch
-from datastream.tools import repeat_map_chain
-from datastream.samplers import StandardSampler
+from pydantic import BaseModel, ConfigDict
+
 from datastream import Dataset
+from datastream.samplers import StandardSampler
+from datastream.tools import repeat_map_chain
 
 
 # TODO: write custom sampler that avoid replacement between samplers
@@ -15,9 +18,10 @@ class MultiSampler(BaseModel, torch.utils.data.Sampler):
     length: int
     merged_samplers: Iterable
 
-    class Config:
-        arbitrary_types_allowed = True
-        allow_mutation = False
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        frozen=True,
+    )
 
     def __init__(self, samplers, dataset):
         BaseModel.__init__(

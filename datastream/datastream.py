@@ -4,7 +4,7 @@ from typing import Callable, Dict, Generic, List, Optional, Tuple, TypeVar, Unio
 
 import numpy as np
 import torch
-from pydantic import BaseModel, PositiveInt
+from pydantic import BaseModel, ConfigDict, PositiveInt
 
 from datastream import Dataset
 from datastream.samplers import (
@@ -40,9 +40,10 @@ class Datastream(BaseModel, Generic[T]):
     dataset: Dataset
     sampler: Optional[torch.utils.data.Sampler]
 
-    class Config:
-        arbitrary_types_allowed = True
-        allow_mutation = False
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        frozen=True,
+    )
 
     def __init__(self, dataset: Dataset[T], sampler: torch.utils.data.Sampler = None):
         if len(dataset) == 0:

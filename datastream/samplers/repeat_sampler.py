@@ -1,7 +1,10 @@
 from __future__ import annotations
-from pydantic import BaseModel
+
 from typing import Iterable
+
 import torch
+import torch.utils.data
+from pydantic import BaseModel, ConfigDict
 
 
 class RepeatSampler(BaseModel, torch.utils.data.Sampler):
@@ -10,8 +13,7 @@ class RepeatSampler(BaseModel, torch.utils.data.Sampler):
     epoch_bound: bool = False
     queue: Iterable
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def __init__(self, sampler, length, epoch_bound=False):
         """

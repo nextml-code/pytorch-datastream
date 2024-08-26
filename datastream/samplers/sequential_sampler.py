@@ -1,14 +1,17 @@
 from __future__ import annotations
-from pydantic import BaseModel
+
 import torch
+import torch.utils.data
+from pydantic import BaseModel, ConfigDict
 
 
 class SequentialSampler(BaseModel, torch.utils.data.Sampler):
     sampler: torch.utils.data.SequentialSampler
 
-    class Config:
-        arbitrary_types_allowed = True
-        allow_mutation = False
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        frozen=True,
+    )
 
     def __init__(self, length):
         BaseModel.__init__(

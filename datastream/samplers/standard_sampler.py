@@ -1,6 +1,8 @@
 from __future__ import annotations
-from pydantic import BaseModel
+
 import torch
+import torch.utils.data
+from pydantic import BaseModel, ConfigDict
 
 
 class StandardSampler(BaseModel, torch.utils.data.Sampler):
@@ -8,9 +10,10 @@ class StandardSampler(BaseModel, torch.utils.data.Sampler):
     replacement: bool
     sampler: torch.utils.data.WeightedRandomSampler
 
-    class Config:
-        arbitrary_types_allowed = True
-        allow_mutation = False
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        frozen=True,
+    )
 
     def __init__(self, length, proportion=1.0, replacement=False):
         BaseModel.__init__(

@@ -1,9 +1,10 @@
 import json
 from pathlib import Path
-from pydantic import validate_arguments
+
+from pydantic import validate_call
 
 
-@validate_arguments
+@validate_call
 def verify_split(old_path: Path, new_path: Path):
     """
     Verify that no keys from an old split are present in a different new split.
