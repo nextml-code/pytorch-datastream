@@ -38,7 +38,7 @@ python = "^3.8"
 torch = ">=1.4.0"
 numpy = "^1.17.0"
 pandas = "^1.0.5"
-pydantic = "*"
+pydantic = "^2.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pylint = "^2.6.0"
