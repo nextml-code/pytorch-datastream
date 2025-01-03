@@ -4,7 +4,13 @@ A `Datastream[T]` combines a `Dataset[T]` and a sampler into a stream of example
 
 By default, samples are drawn without replacement until the dataset is exhausted. The sampling behavior can be modified using `sample_proportion`.
 
-```python test
+## Basic Usage
+
+### Examples
+
+<!--pytest-codeblocks:importorskip(datastream)-->
+
+```python
 from datastream import Dataset, Datastream
 
 # Create a simple dataset
@@ -21,12 +27,47 @@ batch = next(iter(data_loader))
 assert len(batch) == 2
 ```
 
-## Methods
+## Constructor
 
-### data_loader
+### `Datastream`
 
-Get a PyTorch DataLoader for use in training pipeline. The argument `n_batches_per_epoch` overrides the underlying length of the dataset.
-If the epoch ends before the full dataset has been processed then it will continue from the same point the next epoch.
+```python
+Datastream(dataset: Dataset[T], sampler: Optional[torch.utils.data.Sampler] = None) -> Datastream[T]
+```
+
+Create a new datastream from a dataset and optional sampler.
+
+#### Parameters
+
+- `dataset`: The source dataset to stream from
+- `sampler`: Optional sampler to use. If None, a StandardSampler will be used
+
+#### Raises
+
+- `ValueError`: If dataset is empty
+
+## Data Loading Methods
+
+### `data_loader`
+
+```python
+data_loader(self, n_batches_per_epoch: Optional[int] = None, **kwargs) -> torch.utils.data.DataLoader
+```
+
+Get a PyTorch DataLoader for use in training pipeline.
+
+#### Parameters
+
+- `n_batches_per_epoch`: Optional number of batches per epoch. If provided, overrides the underlying length of the dataset
+- `**kwargs`: Additional arguments passed to PyTorch DataLoader
+
+#### Returns
+
+- A PyTorch DataLoader instance
+
+#### Notes
+
+If `n_batches_per_epoch` is set and the epoch ends before the full dataset has been processed, it will continue from the same point in the next epoch.
 
 This is particularly useful when:
 
@@ -34,7 +75,13 @@ This is particularly useful when:
 - Using weighted sampling where you want to ensure all classes are seen equally
 - Doing curriculum learning where you want to control exactly how many samples are seen
 
-```python test
+#### Examples
+
+<!--pytest-codeblocks:importorskip(datastream)-->
+
+```python
+from datastream import Dataset, Datastream
+
 data_loader = (
     Datastream(Dataset.from_subscriptable([5, 5, 5]))
     .data_loader(batch_size=2, n_batches_per_epoch=3)
@@ -44,15 +91,38 @@ assert len(batches) == 3  # Always get exactly 3 batches
 assert len(batches[0]) == 2  # Each batch has size 2
 ```
 
-### sample_proportion
+## Sampling Methods
 
-Create new Datastream with changed proportion. This changes the numbers of drawn samples before restarting sampling with new weights
-and allowing sample replacement.
+### `sample_proportion`
 
-It is important to set this if you are using sample weights because the default is to sample without replacement with proportion 1.0 which will
+```python
+sample_proportion(self, proportion: float) -> Datastream[T]
+```
+
+Create new Datastream with changed sampling proportion.
+
+#### Parameters
+
+- `proportion`: The proportion of the dataset to sample before allowing replacement
+
+#### Returns
+
+- A new Datastream with modified sampling behavior
+
+#### Notes
+
+This changes the number of drawn samples before restarting sampling with new weights and allowing sample replacement.
+
+It is important to set this if you are using sample weights because the default is to sample without replacement with proportion 1.0, which will
 cause the weighting scheme to only affect the order in which the samples are drawn.
 
-```python test
+#### Examples
+
+<!--pytest-codeblocks:importorskip(datastream)-->
+
+```python
+from datastream import Dataset, Datastream
+
 # Create a datastream that will draw half the dataset before allowing replacement
 datastream = (
     Datastream(Dataset.from_subscriptable([1, 2, 3, 4]))
@@ -69,11 +139,33 @@ for _ in range(4):
 assert len(set(samples)) < len(samples)  # Some samples are repeated
 ```
 
-### take
+### `take`
+
+```python
+take(self, n_samples: PositiveInt) -> Datastream[T]
+```
+
+Create new Datastream that draws a fixed number of samples.
+
+#### Parameters
+
+- `n_samples`: Number of samples to draw before allowing replacement
+
+#### Returns
+
+- A new Datastream with modified sampling behavior
+
+#### Notes
 
 Like `sample_proportion` but specify the number of samples instead of a proportion.
 
-```python test
+#### Examples
+
+<!--pytest-codeblocks:importorskip(datastream)-->
+
+```python
+from datastream import Dataset, Datastream
+
 datastream = (
     Datastream(Dataset.from_subscriptable([1, 2, 3, 4, 5]))
     .take(2)  # Draw exactly 2 samples before allowing replacement
@@ -81,22 +173,62 @@ datastream = (
 assert len(list(datastream)) == 2
 ```
 
-### weight
+## Weight Management Methods
 
-Get sample weight for specific example. Weights affect the probability of sampling each example.
+### `weight`
 
-```python test
+```python
+weight(self, index: int) -> float
+```
+
+Get sample weight for specific example.
+
+#### Parameters
+
+- `index`: Index of the example to get weight for
+
+#### Returns
+
+- The weight of the example at the given index
+
+#### Notes
+
+Weights affect the probability of sampling each example.
+
+#### Examples
+
+<!--pytest-codeblocks:importorskip(datastream)-->
+
+```python
+from datastream import Dataset, Datastream
+
 datastream = Datastream(Dataset.from_subscriptable([1, 2, 3]))
 assert datastream.weight(0) == 1.0  # Default weight is 1.0
 ```
 
-### update*weights*
+### `update_weights_`
 
-Update all sample weights by function **in-place**. This is useful for implementing importance sampling
-or curriculum learning strategies.
+```python
+update_weights_(self, function: Callable[[np.array], np.array]) -> None
+```
 
-```python test
+Update all sample weights by function **in-place**.
+
+#### Parameters
+
+- `function`: Function that takes array of weights and returns modified weights
+
+#### Notes
+
+This is useful for implementing importance sampling or curriculum learning strategies.
+
+#### Examples
+
+<!--pytest-codeblocks:importorskip(datastream)-->
+
+```python
 import numpy as np
+from datastream import Dataset, Datastream
 
 # Create a datastream where we'll downweight all samples
 datastream = Datastream(Dataset.from_subscriptable([1, 2, 3]))
@@ -104,25 +236,63 @@ datastream.update_weights_(lambda weights: weights * 0.5)
 assert datastream.weight(0) == 0.5
 ```
 
-### update*example_weight*
+### `update_example_weight_`
 
-Update sample weight for specific example **in-place**. This is useful when you want to adjust
-the sampling probability of individual examples, for instance based on model performance.
+```python
+update_example_weight_(self, weight: Union[List, float], index: int) -> None
+```
 
-```python test
+Update sample weight for specific example **in-place**.
+
+#### Parameters
+
+- `weight`: New weight value(s) for the example
+- `index`: Index of the example to update
+
+#### Notes
+
+This is useful when you want to adjust the sampling probability of individual examples, for instance based on model performance.
+
+#### Examples
+
+<!--pytest-codeblocks:importorskip(datastream)-->
+
+```python
+from datastream import Dataset, Datastream
+
 datastream = Datastream(Dataset.from_subscriptable([1, 2, 3]))
 datastream.update_example_weight_(0.5, index=0)  # Make first example half as likely
 assert datastream.weight(0) == 0.5
 ```
 
-### multi_sample
+### `multi_sample`
 
-Split datastream into clones with different sample weights and then merge them. The weights when accessed will be a sequence of multiple weights.
+```python
+multi_sample(self, n: int) -> Datastream[T]
+```
 
-This allows sample strategies where you for example stratify based on the model's predictions. A common use case is handling
-multi-label classification where you want to ensure good coverage of all classes.
+Split datastream into clones with different sample weights and merge them.
 
-```python test
+#### Parameters
+
+- `n`: Number of weight clones to create
+
+#### Returns
+
+- A new Datastream with multiple weight sets
+
+#### Notes
+
+The weights when accessed will be a sequence of multiple weights. This allows sample strategies where you for example stratify based on the model's predictions.
+A common use case is handling multi-label classification where you want to ensure good coverage of all classes.
+
+#### Examples
+
+<!--pytest-codeblocks:importorskip(datastream)-->
+
+```python
+from datastream import Dataset, Datastream
+
 n_classes = 3
 datastream = (
     Datastream(Dataset.from_subscriptable([1, 2, 3]))
@@ -138,10 +308,25 @@ assert len(weights) == n_classes
 
 ## Static Methods
 
-### merge
+### `merge`
 
-Creates a merged datastream where samples are drawn one at a time from each underlying datastream (also known as "interleave").
-Optionally you can define the number of drawn samples per Datastream.
+```python
+merge(datastreams_and_ns: Tuple[Union[Datastream[T], Tuple[Datastream[T], int]], ...]) -> Datastream[T]
+```
+
+Creates a merged datastream where samples are drawn one at a time from each underlying datastream.
+
+#### Parameters
+
+- `datastreams_and_ns`: List of datastreams or tuples of (datastream, n_samples)
+
+#### Returns
+
+- A new merged Datastream
+
+#### Notes
+
+Also known as "interleave". Optionally you can define the number of drawn samples per Datastream.
 
 This is useful when you want to:
 
@@ -149,7 +334,13 @@ This is useful when you want to:
 - Implement curriculum learning by controlling how often each type of example is seen
 - Balance between different tasks in multi-task learning
 
-```python test
+#### Examples
+
+<!--pytest-codeblocks:importorskip(datastream)-->
+
+```python
+from datastream import Dataset, Datastream
+
 datastream1 = Datastream(Dataset.from_subscriptable([1, 1]))  # Task 1
 datastream2 = Datastream(Dataset.from_subscriptable([2, 2]))  # Task 2
 datastream3 = Datastream(Dataset.from_subscriptable([3, 3, 3, 3]))  # Task 3
@@ -165,10 +356,26 @@ samples = list(merged)
 assert samples == [1, 2, 3, 3, 1, 2, 3, 3]  # Task 3 appears twice as often
 ```
 
-### zip
+### `zip`
 
-Zip multiple datastreams together so that all combinations of examples are possible (i.e. the product) creating tuples like `(example1, example2, ...)`.
-The samples are drawn independently from each underlying datastream.
+```python
+zip(datastreams: List[Datastream]) -> Datastream[Tuple]
+```
+
+Zip multiple datastreams together so that samples are drawn independently.
+
+#### Parameters
+
+- `datastreams`: List of datastreams to zip together
+
+#### Returns
+
+- A new zipped Datastream that yields tuples
+
+#### Notes
+
+Samples are drawn independently from each underlying datastream, creating tuples like `(example1, example2, ...)`.
+This is different from `Dataset.combine`, which creates all possible combinations (cartesian product) of examples.
 
 This is particularly useful for:
 
@@ -176,13 +383,30 @@ This is particularly useful for:
 - Implementing data augmentation strategies
 - Combining different types of inputs
 
-```python test
+#### Examples
+
+<!--pytest-codeblocks:importorskip(datastream)-->
+
+```python
+from datastream import Dataset, Datastream
+
 # Create two streams: one for images, one for labels
 datastream1 = Datastream(Dataset.from_subscriptable([1, 2]))  # e.g., image IDs
 datastream2 = Datastream(Dataset.from_subscriptable([3, 4]))  # e.g., augmentation params
 
-# Get all combinations of images and augmentations
+# Get samples drawn independently from each datastream
 zipped = Datastream.zip([datastream1, datastream2])
 samples = list(zipped)
-assert len(samples) == 4  # All combinations: (1,3), (1,4), (2,3), (2,4)
+print("Samples:", samples)  # Debug output
+print("Length:", len(samples))  # Debug output
+print("Expected length:", max(len(datastream1.dataset), len(datastream2.dataset)))  # Debug output
+assert len(samples) == 2  # Independent samples: (1,3), (2,4)
+
+# For comparison, Dataset.combine creates all possible combinations
+combined = Dataset.combine([datastream1.dataset, datastream2.dataset])
+combined_samples = list(combined)
+print("Combined samples:", combined_samples)  # Debug output
+print("Combined length:", len(combined_samples))  # Debug output
+print("Expected combined length:", len(datastream1.dataset) * len(datastream2.dataset))  # Debug output
+assert len(combined_samples) == 4  # All combinations: (1,3), (1,4), (2,3), (2,4)
 ```

@@ -106,10 +106,14 @@ class Datastream(BaseModel, Generic[T]):
     @staticmethod
     def zip(datastreams: List[Datastream]) -> Datastream[Tuple]:
         """
-        Zip multiple datastreams together so that all combinations of examples
-        are possible (i.e. the product) creating tuples like
-        ``(example1, example2, ...)``. The samples are drawn independently
-        from each underlying datastream.
+        Zip multiple datastreams together so that samples are drawn independently
+        from each underlying datastream, creating tuples like
+        ``(example1, example2, ...)``. The samples are drawn independently from
+        each underlying datastream.
+
+        Note: This is different from ``Dataset.combine``, which creates all
+        possible combinations (cartesian product) of examples. If you need all
+        possible combinations, use ``Dataset.combine`` instead.
         """
         return Datastream(
             Dataset.combine([datastream.dataset for datastream in datastreams]),
