@@ -34,7 +34,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.9"
 torch = ">=1.4.0"
 numpy = "^1.17.0"
 pandas = "^1.0.5"
