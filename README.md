@@ -2,7 +2,7 @@
 
 [![PyPI version](https://badge.fury.io/py/pytorch-datastream.svg)](https://badge.fury.io/py/pytorch-datastream)
 [![Python versions](https://img.shields.io/pypi/pyversions/pytorch-datastream.svg)](https://pypi.python.org/pypi/pytorch-datastream)
-[![Documentation Status](https://readthedocs.org/projects/pytorch-datastream/badge/?version=latest)](https://pytorch-datastream.readthedocs.io/en/latest/?badge=latest)
+[![Documentation Status](https://github.com/nextml-code/pytorch-datastream/actions/workflows/deploy-docs.yml/badge.svg)](https://nextml-code.github.io/pytorch-datastream)
 [![License](https://img.shields.io/pypi/l/pytorch-datastream.svg)](https://pypi.python.org/pypi/pytorch-datastream)
 
 This is a simple library for creating readable dataset pipelines and reusing best practices for issues such as imbalanced datasets. There are just two components to keep track of: `Dataset` and `Datastream`.
@@ -25,7 +25,7 @@ pip install pytorch-datastream
 
 ## Usage
 
-The list below is meant to showcase functions that are useful in most standard and non-standard cases. It is not meant to be an exhaustive list. See the [documentation](https://pytorch-datastream.readthedocs.io/en/latest/) for a more extensive list on API and usage.
+The list below is meant to showcase functions that are useful in most standard and non-standard cases. It is not meant to be an exhaustive list. See the [documentation](https://nextml-code.github.io/pytorch-datastream) for a more extensive list on API and usage.
 
 ```python
 Dataset.from_subscriptable
@@ -120,5 +120,5 @@ The fruit datastreams given below repeatedly yields the string of its fruit type
 
 ### More usage examples
 
-See the [documentation](https://pytorch-datastream.readthedocs.io/en/latest/) for more usage examples.
+See the [documentation](https://nextml-code.github.io/pytorch-datastream) for more usage examples.
 ````
