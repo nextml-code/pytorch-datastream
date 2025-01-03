@@ -2,7 +2,6 @@
 
 [![PyPI version](https://badge.fury.io/py/pytorch-datastream.svg)](https://badge.fury.io/py/pytorch-datastream)
 [![Python versions](https://img.shields.io/pypi/pyversions/pytorch-datastream.svg)](https://pypi.python.org/pypi/pytorch-datastream)
-[![Documentation Status](https://github.com/nextml-code/pytorch-datastream/actions/workflows/deploy-docs.yml/badge.svg)](https://nextml-code.github.io/pytorch-datastream)
 [![License](https://img.shields.io/pypi/l/pytorch-datastream.svg)](https://pypi.python.org/pypi/pytorch-datastream)
 
 This is a simple library for creating readable dataset pipelines and reusing best practices for issues such as imbalanced datasets. There are just two components to keep track of: `Dataset` and `Datastream`.
