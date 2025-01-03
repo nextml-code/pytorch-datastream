@@ -1,0 +1,57 @@
+site_name: Pytorch Datastream
+site_description: Simple dataset to dataloader library for pytorch
+repo_url: https://github.com/nextml-code/pytorch-datastream
+repo_name: nextml-code/pytorch-datastream
+
+theme:
+  name: material
+  palette:
+    primary: indigo
+    accent: indigo
+  features:
+    - navigation.sections
+    - navigation.expand
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_source: true
+            show_root_heading: true
+            docstring_style: google
+  - autorefs
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - admonition
+  - pymdownx.details
+  - attr_list
+  - md_in_html
+  - tables
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - API Reference:
+    - Dataset: dataset.md
+    - Datastream: datastream.md
+
+watch:
+  - datastream
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/nextml-code/pytorch-datastream 

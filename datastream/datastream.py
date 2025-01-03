@@ -20,21 +20,24 @@ R = TypeVar("R")
 
 
 class Datastream(BaseModel, Generic[T]):
-    """
-    ``Datastream[T]`` combines a ``Dataset[T]`` and a sampler into a stream of
-    examples.
+    """A stream of examples combining a Dataset and a sampler.
 
-    By default the samples are drawn without replacement until the
-    full dataset is exhausted. The proportion of the dataset that should be
-    drawn before allowing replacement can be changed with
-    :func:`Datastream.sample_proportion`.
+    Datastream combines a Dataset[T] with a sampler to create a stream of examples.
+    By default, samples are drawn without replacement until the dataset is exhausted.
+    The sampling behavior can be modified using sample_proportion.
 
-    >>> data_loader = (
-    ...     Datastream(Dataset.from_subscriptable([1, 2, 3]))
-    ...     .data_loader(batch_size=16, n_batches_per_epoch=100)
-    ... )
-    >>> len(next(iter(data_loader)))
-    16
+    Args:
+        dataset (Dataset): The source dataset to stream from.
+        sampler (Optional[torch.utils.data.Sampler]): The sampler to use. If None,
+            a StandardSampler will be used.
+
+    Example:
+        >>> data_loader = (
+        ...     Datastream(Dataset.from_subscriptable([1, 2, 3]))
+        ...     .data_loader(batch_size=16, n_batches_per_epoch=100)
+        ... )
+        >>> len(next(iter(data_loader)))
+        16
     """
 
     dataset: Dataset
