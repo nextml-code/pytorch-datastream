@@ -101,5 +101,6 @@ test_namespace = [
     "np = numpy",
     "torch = torch",
     "Image = PIL.Image",
+    "Path = pathlib.Path",
     "datastream = datastream"
 ]
