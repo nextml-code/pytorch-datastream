@@ -6,7 +6,7 @@ authors = ["NextML"]
 license = "Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/nextml-code/pytorch-datastream"
-documentation = "https://pytorch-datastream.readthedocs.io"
+documentation = "https://nextml-code.github.io/pytorch-datastream"
 keywords = [
     "pytorch",
     "machine",
