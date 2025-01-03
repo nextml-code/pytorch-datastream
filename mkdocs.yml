@@ -9,8 +9,10 @@ theme:
     primary: indigo
     accent: indigo
   features:
+    - navigation.instant
     - navigation.sections
     - navigation.expand
+    - navigation.indexes
     - search.suggest
     - search.highlight
     - content.code.copy
