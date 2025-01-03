@@ -29,10 +29,18 @@ R = TypeVar("R")
 
 
 class Dataset(BaseModel, Generic[T]):
-    """
-    A ``Dataset[T]`` is a mapping that allows pipelining of functions in a
-    readable syntax returning an example of type ``T``.
+    """A dataset that allows pipelining of functions with a readable syntax.
 
+    The Dataset class provides a mapping interface that enables function pipelining,
+    returning examples of type T. It supports operations like mapping, filtering,
+    and combining datasets.
+
+    Args:
+        dataframe (Optional[pd.DataFrame]): Source dataframe for the dataset.
+        length (int): Number of examples in the dataset.
+        get_item (Callable[[pd.DataFrame, int], T]): Function to get an item at a given index.
+
+    Example:
         >>> from datastream import Dataset
         >>> fruit_and_cost = (
         ...     ('apple', 5),
@@ -62,34 +70,44 @@ class Dataset(BaseModel, Generic[T]):
 
     @staticmethod
     def from_subscriptable(subscriptable) -> Dataset:
-        """
-        Create ``Dataset`` based on subscriptable i.e. implements
-        ``__getitem__`` and ``__len__``.
+        """Creates a Dataset from a subscriptable object.
 
-        Should only be used for simple examples as a ``Dataset`` created with
-        this method does not support methods that require a source dataframe
-        like :func:`Dataset.split` and :func:`Dataset.subset`.
-        """
+        Creates a Dataset based on any object that implements __getitem__ and __len__.
+        This method should only be used for simple examples as it doesn't support
+        methods that require a source dataframe like split and subset.
 
+        Args:
+            subscriptable: An object implementing __getitem__ and __len__.
+
+        Returns:
+            Dataset: A new dataset wrapping the subscriptable object.
+        """
         return Dataset.from_dataframe(
             pd.DataFrame(dict(index=range(len(subscriptable))))
         ).map(lambda row: subscriptable[row["index"]])
 
     @staticmethod
     def from_dataframe(dataframe: pd.DataFrame) -> Dataset[pd.Series]:
-        """
-        Create ``Dataset`` based on ``pandas.DataFrame``.
-        :func:`Dataset.__getitem__` will return a row from the dataframe and
-        :func:`Dataset.map` should be given a function that takes a row from
-        the dataframe as input.
+        """Creates a Dataset from a pandas DataFrame.
 
-        >>> (
-        ...     Dataset.from_dataframe(pd.DataFrame(dict(
-        ...        number=[1, 2, 3]
-        ...     )))
-        ...     .map(lambda row: row['number'] + 1)
-        ... )[-1]
-        4
+        Creates a Dataset where __getitem__ returns a row from the dataframe.
+        The map method should be given a function that takes a row as input.
+
+        Args:
+            dataframe (pd.DataFrame): Source dataframe for the dataset.
+
+        Returns:
+            Dataset[pd.Series]: A new dataset wrapping the dataframe.
+
+        Example:
+            >>> dataset = (
+            ...     Dataset.from_dataframe(pd.DataFrame(dict(
+            ...        number=[1, 2, 3]
+            ...     )))
+            ...     .map(lambda row: row['number'] + 1)
+            ... )
+            >>> dataset[-1]
+            4
         """
         return Dataset(
             dataframe=dataframe,
@@ -99,19 +117,27 @@ class Dataset(BaseModel, Generic[T]):
 
     @staticmethod
     def from_paths(paths: Iterable[str, Path], pattern: str) -> Dataset[pd.Series]:
-        r"""
-        Create ``Dataset`` from paths using regex pattern that extracts information
-        from the path itself.
-        :func:`Dataset.__getitem__` will return a row from the dataframe and
-        :func:`Dataset.map` should be given a function that takes a row from
-        the dataframe as input.
+        """Creates a Dataset from file paths using regex pattern extraction.
 
-        >>> image_paths = ["dataset/damage/1.png"]
-        >>> (
-        ...     Dataset.from_paths(image_paths, pattern=r".*/(?P<class_name>\w+)/(?P<index>\d+).png")
-        ...     .map(lambda row: row["class_name"])
-        ... )[-1]
-        'damage'
+        Creates a Dataset by extracting information from file paths using a regex pattern.
+        The __getitem__ will return a row from the dataframe and map should be given 
+        a function that takes a row as input.
+
+        Args:
+            paths (Iterable[str, Path]): List of file paths.
+            pattern (str): Regex pattern to extract information from paths.
+
+        Returns:
+            Dataset[pd.Series]: A new dataset with extracted path information.
+
+        Example:
+            >>> image_paths = ["dataset/damage/1.png"]
+            >>> dataset = (
+            ...     Dataset.from_paths(image_paths, pattern=r".*/(?P<class_name>\w+)/(?P<index>\d+).png")
+            ...     .map(lambda row: row["class_name"])
+            ... )
+            >>> dataset[-1]
+            'damage'
         """
         paths = list(paths)
         return Dataset.from_dataframe(
@@ -162,14 +188,21 @@ class Dataset(BaseModel, Generic[T]):
         return type(self)(**new_dict)
 
     def map(self: Dataset[T], function: Callable[[T], R]) -> Dataset[R]:
-        """
-        Creates a new dataset with the function added to the dataset pipeline.
+        """Creates a new dataset by applying a function to each item.
 
-        >>> (
-        ...     Dataset.from_subscriptable([1, 2, 3])
-        ...     .map(lambda number: number + 1)
-        ... )[-1]
-        4
+        Args:
+            function (Callable[[T], R]): Function to apply to each item.
+
+        Returns:
+            Dataset[R]: A new dataset with the function added to the pipeline.
+
+        Example:
+            >>> dataset = (
+            ...     Dataset.from_subscriptable([1, 2, 3])
+            ...     .map(lambda number: number + 1)
+            ... )
+            >>> dataset[-1]
+            4
         """
 
         def composed_fn(dataframe, index):
@@ -201,38 +234,54 @@ class Dataset(BaseModel, Generic[T]):
         )
 
     def starmap(self: Dataset[T], function: Callable[..., R]) -> Dataset[R]:
-        """
-        Creates a new dataset with the function added to the dataset pipeline.
-        The dataset's pipeline should return an iterable that will be
-        expanded as \\*args to the mapped function.
+        """Creates a new dataset by applying a function with unpacked arguments.
 
-        >>> (
-        ...     Dataset.from_subscriptable([1, 2, 3])
-        ...     .map(lambda number: (number, number + 1))
-        ...     .starmap(lambda number, plus_one: number + plus_one)
-        ... )[-1]
-        7
+        The dataset's pipeline should return an iterable that will be expanded as *args
+        to the mapped function.
+
+        Args:
+            function (Callable[..., R]): Function to apply with unpacked arguments.
+
+        Returns:
+            Dataset[R]: A new dataset with the function added to the pipeline.
+
+        Example:
+            >>> dataset = (
+            ...     Dataset.from_subscriptable([1, 2, 3])
+            ...     .map(lambda number: (number, number + 1))
+            ...     .starmap(lambda number, plus_one: number + plus_one)
+            ... )
+            >>> dataset[-1]
+            7
         """
         return self.map(tools.star(function))
 
     def subset(
         self, mask_fn: Callable[[pd.DataFrame], Union[pd.Series, np.array, List[bool]]]
     ) -> Dataset[T]:
-        """
-        Select a subset of the dataset using a function that receives the
-        source dataframe as input and is expected to return a boolean mask.
+        """Creates a subset of the dataset using a mask function.
 
-        Note that this function can still be called after multiple operations
-        such as mapping functions as it uses the source dataframe.
+        Selects a subset using a function that receives the source dataframe as input
+        and returns a boolean mask. This function can be called after multiple operations
+        as it uses the source dataframe.
 
-        >>> (
-        ...     Dataset.from_dataframe(pd.DataFrame(dict(
-        ...        number=[1, 2, 3]
-        ...     )))
-        ...     .map(lambda row: row['number'])
-        ...     .subset(lambda dataframe: dataframe['number'] <= 2)
-        ... )[-1]
-        2
+        Args:
+            mask_fn (Callable[[pd.DataFrame], Union[pd.Series, np.array, List[bool]]]): 
+                Function that returns a boolean mask for selecting rows.
+
+        Returns:
+            Dataset[T]: A new dataset containing only the selected examples.
+
+        Example:
+            >>> dataset = (
+            ...     Dataset.from_dataframe(pd.DataFrame(dict(
+            ...        number=[1, 2, 3]
+            ...     )))
+            ...     .map(lambda row: row['number'])
+            ...     .subset(lambda dataframe: dataframe['number'] <= 2)
+            ... )
+            >>> dataset[-1]
+            2
         """
         dataframe = self.dataframe[mask_fn(self.dataframe)]
         return self.replace(dataframe=dataframe, length=len(dataframe))

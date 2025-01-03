@@ -4,7 +4,7 @@ version = "0.0.0"
 description = "Simple dataset to dataloader library for pytorch"
 authors = ["NextML"]
 license = "Apache-2.0"
-readme = "README.rst"
+readme = "README.md"
 repository = "https://github.com/nextml-code/pytorch-datastream"
 documentation = "https://pytorch-datastream.readthedocs.io"
 keywords = [
@@ -43,8 +43,12 @@ pydantic = "^2.0.0"
 [tool.poetry.group.dev.dependencies]
 pylint = "^2.6.0"
 flake8 = "^3.8.4"
-pytest = "^6.1.2"
+pytest = "^7.0.0"
 black = "^23.1.0"
+mkdocs = "^1.5.0"
+mkdocs-material = "^9.0.0"
+pytest-codeblocks = "^0.17.0"
+mkdocstrings = {extras = ["python"], version = "^0.24.0"}
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -70,3 +74,32 @@ exclude = '''
   )/
 )
 '''
+
+[tool.pytest.ini_options]
+testpaths = ["datastream", "docs", "tests"]
+python_files = ["*.py", "*.md"]
+addopts = "--doctest-modules --doctest-glob=*.md"
+doctest_optionflags = "NORMALIZE_WHITESPACE IGNORE_EXCEPTION_DETAIL ELLIPSIS"
+markers = [
+    "codeblocks: mark test to be collected from code blocks",
+]
+
+[tool.pytest-codeblocks]
+pattern = "python"
+test_files = ["docs/*.md"]
+test_namespace = [
+    "Dataset = datastream.Dataset",
+    "Datastream = datastream.Datastream",
+    "numpy_seed = datastream.tools.numpy_seed",
+    "verify_split = datastream.tools.verify_split",
+    "star = datastream.tools.star",
+    "starcompose = datastream.tools.starcompose",
+    "repeat_map_chain = datastream.tools.repeat_map_chain",
+    "stratified_split = datastream.tools.stratified_split",
+    "unstratified_split = datastream.tools.unstratified_split",
+    "pd = pandas",
+    "np = numpy",
+    "torch = torch",
+    "Image = PIL.Image",
+    "datastream = datastream"
+]
