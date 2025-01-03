@@ -10,6 +10,8 @@ This is a simple library for creating readable dataset pipelines and reusing bes
 
 `Datastream` combines a `Dataset` and a sampler into a stream of examples. It provides a simple solution to oversampling / stratification, weighted sampling, and finally converting to a `torch.utils.data.DataLoader`.
 
+See the [documentation](https://nextml-code.github.io/pytorch-datastream) for more information.
+
 ## Install
 
 ```bash
@@ -30,23 +32,23 @@ The list below is meant to showcase functions that are useful in most standard a
 Dataset.from_subscriptable
 Dataset.from_dataframe
 Dataset
-.map
-.subset
-.split
-.cache
-.with_columns
+    .map
+    .subset
+    .split
+    .cache
+    .with_columns
 
 Datastream.merge
 Datastream.zip
 Datastream
-.map
-.data*loader
-.zip_index
-.update_weights*
-.update*example_weight*
-.weight
-.state_dict
-.load_state_dict
+    .map
+    .data*loader
+    .zip_index
+    .update_weights*
+    .update*example_weight*
+    .weight
+    .state_dict
+    .load_state_dict
 ```
 
 ### Simple image dataset example
@@ -71,15 +73,15 @@ image_dir = Path("images")
 image_paths = list(image_dir.glob("\*_/_.jpg"))
 
 dataset = (
-Dataset.from_paths(
-image_paths,
-pattern=r".\*/(?P<class_name>\w+)/(?P<image_name>\w+).jpg"
-)
-.map(lambda row: dict(
-image=Image.open(row["path"]),
-class_name=row["class_name"],
-image_name=row["image_name"],
-))
+    Dataset.from_paths(
+    image_paths,
+    pattern=r".\*/(?P<class_name>\w+)/(?P<image_name>\w+).jpg"
+    )
+    .map(lambda row: dict(
+        image=Image.open(row["path"]),
+        class_name=row["class_name"],
+        image_name=row["image_name"],
+    ))
 )
 
 # Access an item from the dataset
@@ -92,32 +94,31 @@ print(f"Class: {first_item['class_name']}, Image name: {first_item['image_name']
 
 The fruit datastreams given below repeatedly yields the string of its fruit type.
 
-````python
-
-> > > datastream = Datastream.merge([
-> > > ... (apple_datastream, 2),
-> > > ... (pear_datastream, 1),
-> > > ... (banana_datastream, 1),
-> > > ... ])
-> > > next(iter(datastream.data_loader(batch_size=8)))
-> > > ['apple', 'apple', 'pear', 'banana', 'apple', 'apple', 'pear', 'banana']
-> > > ```
+```python
+>>> datastream = Datastream.merge([
+>>> ... (apple_datastream, 2),
+>>> ... (pear_datastream, 1),
+>>> ... (banana_datastream, 1),
+>>> ... ])
+>>> next(iter(datastream.data_loader(batch_size=8)))
+>>> ['apple', 'apple', 'pear', 'banana', 'apple', 'apple', 'pear', 'banana']
+>>>
+```
 
 ### Zip independently sampled datastreams
 
 The fruit datastreams given below repeatedly yields the string of its fruit type.
 
 ```python
-
-> > > datastream = Datastream.zip([
-> > > ... apple_datastream,
-> > > ... Datastream.merge([pear_datastream, banana_datastream]),
-> > > ... ])
-> > > next(iter(datastream.data_loader(batch_size=4)))
-> > > [('apple', 'pear'), ('apple', 'banana'), ('apple', 'pear'), ('apple', 'banana')]
-> > > ```
+>>> datastream = Datastream.zip([
+>>> ... apple_datastream,
+>>> ... Datastream.merge([pear_datastream, banana_datastream]),
+>>> ... ])
+>>> next(iter(datastream.data_loader(batch_size=4)))
+>>> [('apple', 'pear'), ('apple', 'banana'), ('apple', 'pear'), ('apple', 'banana')]
+>>>
+```
 
 ### More usage examples
 
 See the [documentation](https://nextml-code.github.io/pytorch-datastream) for more usage examples.
-````
