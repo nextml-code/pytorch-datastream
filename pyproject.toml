@@ -1,21 +1,19 @@
-[tool.poetry]
+[project]
 name = "pytorch-datastream"
 version = "0.0.0"
 description = "Simple dataset to dataloader library for pytorch"
-authors = ["NextML"]
-license = "Apache-2.0"
+authors = [{ name = "NextML" }]
+requires-python = ">=3.9,<4"
 readme = "README.md"
-repository = "https://github.com/nextml-code/pytorch-datastream"
-documentation = "https://nextml-code.github.io/pytorch-datastream"
+license = "Apache-2.0"
 keywords = [
     "pytorch",
     "machine",
     "learning",
     "dataset",
     "pipeline",
-    "dataloader"
+    "dataloader",
 ]
-# some classifiers are added automatically, see https://python-poetry.org/docs/pyproject/#classifiers
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Other Environment",
@@ -27,32 +25,41 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Software Development",
     "Topic :: Software Development :: Libraries",
-    "Topic :: Software Development :: Libraries :: Python Modules"
+    "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-packages = [
-    { include = "datastream" },
+dependencies = [
+    "torch>=1.4.0",
+    "numpy>=1.17.0,<2",
+    "pandas>=1.0.5,<2",
+    "pydantic>=2.0.0,<3",
 ]
 
-[tool.poetry.dependencies]
-python = "^3.9"
-torch = ">=1.4.0"
-numpy = "^1.17.0"
-pandas = "^1.0.5"
-pydantic = "^2.0.0"
+[project.urls]
+Repository = "https://github.com/nextml-code/pytorch-datastream"
+Documentation = "https://nextml-code.github.io/pytorch-datastream"
 
-[tool.poetry.group.dev.dependencies]
-pylint = "^2.6.0"
-flake8 = "^3.8.4"
-pytest = "^7.0.0"
-black = "^23.1.0"
-mkdocs = "^1.5.0"
-mkdocs-material = "^9.0.0"
-pytest-codeblocks = "^0.17.0"
-mkdocstrings = {extras = ["python"], version = "^0.24.0"}
+[dependency-groups]
+dev = [
+    "pylint>=2.6.0,<3",
+    "flake8>=3.8.4,<4",
+    "pytest>=7.0.0,<8",
+    "black>=23.1.0,<24",
+    "mkdocs>=1.5.0,<2",
+    "mkdocs-material>=9.0.0,<10",
+    "pytest-codeblocks>=0.17.0,<0.18",
+    "mkdocstrings[python]>=0.24.0,<0.25",
+]
+
+[tool.uv]
+default-groups = "all"
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["uv_build>=0.11.25,<0.12"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = ""
+module-name = "datastream"
 
 [tool.black]
 line-length = 88
