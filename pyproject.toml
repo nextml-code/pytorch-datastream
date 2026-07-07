@@ -30,7 +30,7 @@ classifiers = [
 dependencies = [
     "torch>=1.4.0",
     "numpy>=1.17.0,<2",
-    "pandas>=1.0.5,<2",
+    "pandas>=1.0.5,<3",
     "pydantic>=2.0.0,<3",
 ]
 
