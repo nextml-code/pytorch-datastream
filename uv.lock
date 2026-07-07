@@ -1057,7 +1057,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "numpy", specifier = ">=1.17.0,<2" },
-    { name = "pandas", specifier = ">=1.0.5,<2" },
+    { name = "pandas", specifier = ">=1.0.5,<3" },
     { name = "pydantic", specifier = ">=2.0.0,<3" },
     { name = "torch", specifier = ">=1.4.0" },
 ]
